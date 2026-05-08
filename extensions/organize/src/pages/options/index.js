@@ -3075,13 +3075,13 @@ class OptionsManager {
         this._urlCheckCache.set(url, result);
         return result;
       }
-      // 认证类状态码视为“可达但受限”
+      // 认证类状态码视为”可达但受限”
       if (res.status === 401 || res.status === 403) {
         const result = { ok: true, status: res.status, statusText: String(res.status) };
         this._urlCheckCache.set(url, result);
         return result;
       }
-      // 常见瞬时错误统一视为可达以降低误报（与 LazyCat 的“尽量避免误判”思路一致）
+      // 常见瞬时错误统一视为可达以降低误报
       const transientStatuses = new Set([408, 425, 429, 502, 503, 504, 520, 522, 524]);
       if (transientStatuses.has(res.status)) {
         const result = { ok: true, status: res.status, statusText: String(res.status) };
@@ -3092,7 +3092,6 @@ class OptionsManager {
       if (res.status === 405 || res.status === 501) {
         try {
           const resNc = await fetch(url, { method: 'GET', mode: 'no-cors', redirect: 'follow', credentials: 'omit', cache: 'no-store' });
-          // 成功返回即视为可达；opaque 无法读状态但说明网络连通
           const result = { ok: true, status: 0, statusText: 'opaque' };
           this._urlCheckCache.set(url, result);
           return result;
@@ -3122,12 +3121,10 @@ class OptionsManager {
       if (avoidPopups) {
         try {
           const res2 = await fetch(url, { method: 'HEAD', mode: 'no-cors', redirect: 'manual', credentials: 'omit', cache: 'no-store' });
-          // 成功返回即视为可达（opaque 无法读状态，但不触发弹窗）
           const result = { ok: true, status: 0, statusText: 'opaque' };
           this._urlCheckCache.set(url, result);
           return result;
         } catch (e2) {
-          // 尝试 GET no-cors 作为进一步连通性确认
           try {
             await fetch(url, { method: 'GET', mode: 'no-cors', redirect: 'follow', credentials: 'omit', cache: 'no-store' });
             const result = { ok: true, status: 0, statusText: 'opaque' };
@@ -3158,7 +3155,7 @@ class OptionsManager {
     try {
       const res = await fetch(url, { method: 'GET', mode: 'cors', redirect: 'follow', credentials: 'omit', cache: 'no-store', signal: controller.signal });
       clearTimeout(timer);
-      // 认证类状态码视为“可达但受限”
+      // 认证类状态码视为”可达但受限”
       if (res.ok || res.status === 401 || res.status === 403) {
         return { ok: true, status: res.status, statusText: String(res.status) };
       }

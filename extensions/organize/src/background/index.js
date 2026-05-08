@@ -1378,27 +1378,28 @@ async function autoClassifyBookmarks(options = {}) {
         : [];
       if (ids.length > 0) {
         for (const id of ids) {
-          const tree = await chrome.bookmarks.getSubTree(String(id));
-          bookmarksTrees.push({ scopeId: String(id), tree });
-          console.log('[autoClassify] 获取指定范围子树成功:', id);
+          const children = await chrome.bookmarks.getChildren(String(id));
+          // getChildren 返回子节点数组，用 { children } 包装后传给 flattenBookmarks
+          bookmarksTrees.push({ scopeId: String(id), tree: { children: Array.isArray(children) ? children : [] }, recursive: false });
+          console.log('[autoClassify] 获取指定范围子级成功:', id);
         }
       } else if (options.scopeFolderId) {
         const id = String(options.scopeFolderId);
         const tree = await chrome.bookmarks.getSubTree(id);
-        bookmarksTrees.push({ scopeId: id, tree });
+        bookmarksTrees.push({ scopeId: id, tree, recursive: true });
         console.log('[autoClassify] 获取指定范围子树成功(兼容单值):', id);
       } else {
         const tree = await chrome.bookmarks.getTree();
-        bookmarksTrees.push({ scopeId: '', tree });
-        console.log('[autoClassify] 获取书签树成功');
+        bookmarksTrees.push({ scopeId: '', tree, recursive: true });
+        console.log('[autoClassize] 获取书签树成功');
       }
     } catch (e) {
       console.error('[autoClassify] 获取书签树失败:', e);
       throw new Error('无法读取书签，请检查权限');
     }
     let flatBookmarks = [];
-    for (const { scopeId, tree } of bookmarksTrees) {
-      const flat = flattenBookmarks(tree);
+    for (const { scopeId, tree, recursive } of bookmarksTrees) {
+      const flat = flattenBookmarks(tree, recursive);
       flat.forEach(b => flatBookmarks.push({ ...b, _originScopeId: scopeId }));
     }
     console.log('[autoClassify] 扁平化书签数量:', flatBookmarks.length);
@@ -1643,21 +1644,25 @@ async function findOrCreateFolder(name) {
 }
 
 // 扁平化书签树
-function flattenBookmarks(bookmarkTree) {
+// recursive: true 递归遍历所有子文件夹，false 只处理直接子节点（不进入子文件夹）
+function flattenBookmarks(bookmarkTree, recursive = true) {
   const result = [];
 
   function traverse(nodes) {
+    if (!nodes || typeof nodes[Symbol.iterator] !== 'function') return;
     for (const node of nodes) {
       if (node.url) {
         result.push(node);
       }
-      if (node.children) {
+      if (recursive && node.children) {
         traverse(node.children);
       }
     }
   }
 
-  traverse(bookmarkTree);
+  // normalize: bookmarkTree 可能是数组(getTree/getSubTree)也可能是 { children } 对象(getChildren 包装)
+  const rootNodes = Array.isArray(bookmarkTree) ? bookmarkTree : (bookmarkTree.children || []);
+  traverse(rootNodes);
   return result;
 }
 
