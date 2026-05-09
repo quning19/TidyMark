@@ -752,5 +752,5 @@
     applyTranslations();
   }
 
-  env.I18n = { init, t, tf, setLanguage, applyTranslations, translateCategory, translateCategoryByName, resolveCategoryKeyByName, getLanguageSync };
+  env.I18n = { init, t, tf, setLanguage, applyTranslations, translateCategory, translateCategoryByName, resolveCategoryKeyByName, getLanguageSync, ADDITIONAL_CATEGORY_PAIRS };
 })();
