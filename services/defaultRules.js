@@ -173,7 +173,7 @@
   ];
 
   function byLang(lang) {
-    if (!lang) return rules_zhCN;
+    if (!lang) return rules_en;
     const l = lang.toLowerCase();
     if (l.startsWith('zh-tw')) return rules_zhTW;
     if (l.startsWith('zh')) return rules_zhCN;

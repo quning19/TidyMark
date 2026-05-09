@@ -706,18 +706,19 @@
   }
 
   function translateCategoryByName(name) {
-    const key = resolveCategoryKeyByName(name);
-    if (key) return translateCategory(key);
-    // Fallback normalize using additional pairs when categoryMap lacks an entry
-    const lang = getLanguageSync();
-    const isZh = String(lang || '').toLowerCase().startsWith('zh');
-    if (isZh) {
-      const zh = ADDITIONAL_CATEGORY_PAIRS_REVERSE[name];
-      return zh || name;
-    } else {
-      const en = ADDITIONAL_CATEGORY_PAIRS[name];
-      return en || name;
-    }
+    return name;
+    // const key = resolveCategoryKeyByName(name);
+    // if (key) return translateCategory(key);
+    // // Fallback normalize using additional pairs when categoryMap lacks an entry
+    // const lang = getLanguageSync();
+    // const isZh = String(lang || '').toLowerCase().startsWith('zh');
+    // if (isZh) {
+    //   const zh = ADDITIONAL_CATEGORY_PAIRS_REVERSE[name];
+    //   return zh || name;
+    // } else {
+    //   const en = ADDITIONAL_CATEGORY_PAIRS[name];
+    //   return en || name;
+    // }
   }
 
   function applyTranslations(root) {

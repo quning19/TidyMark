@@ -75,6 +75,7 @@ class OptionsManager {
           'deadIgnoreDnsOk',
           'deadScanDuplicates',
           'deadScanFolderId',
+          'deadSkipDomains',
           // 整理范围（移除目标父目录）
           'organizeScopeFolderId',
           // 多选整理范围（新增）
@@ -246,6 +247,9 @@ class OptionsManager {
         deadEnableDnsCheck: result.deadEnableDnsCheck !== undefined ? !!result.deadEnableDnsCheck : false,
         deadIgnoreDnsOk: result.deadIgnoreDnsOk !== undefined ? !!result.deadIgnoreDnsOk : false,
         deadScanDuplicates: result.deadScanDuplicates !== undefined ? !!result.deadScanDuplicates : false,
+        deadSkipDomains: Array.isArray(result.deadSkipDomains) && result.deadSkipDomains.length > 0
+          ? result.deadSkipDomains.map(v => String(v).trim()).filter(Boolean)
+          : ['home.quning.fun', 'youle.game', 'topjoy.com'],
         // 多选整理范围（为空表示全部）
         organizeScopeFolderIds: Array.isArray(result.organizeScopeFolderIds)
           ? result.organizeScopeFolderIds.map(v => String(v))
@@ -314,6 +318,7 @@ class OptionsManager {
         deadIgnoreDnsOk: false,
         deadScanDuplicates: false,
         deadScanFolderId: null,
+        deadSkipDomains: ['home.quning.fun', 'youle.game', 'topjoy.com'],
         // 默认云端设置
         webdavUrl: '',
         webdavUsername: '',
@@ -2544,11 +2549,14 @@ class OptionsManager {
       const bookmarks = this.settings.deadScanFolderId
         ? await this.getBookmarksInFolder(this.settings.deadScanFolderId)
         : await this.getAllBookmarks();
+      console.log(`[deadScan] 书签总数: ${bookmarks.length}, 跳过域名清单:`, this.settings.deadSkipDomains);
       const targets = bookmarks.filter(b => {
         if (!this.isHttpUrl(b.url)) return false;
         if (this.settings.deadIgnorePrivateIp && this._isPrivateOrLocalHost(b.url)) return false;
+        if (this._isDomainSkipped(b.url)) return false;
         return true;
       });
+      console.log(`[deadScan] 过滤后待检测: ${targets.length}`);
       const total = targets.length;
       let done = 0;
       const dead = [];
@@ -2602,13 +2610,13 @@ class OptionsManager {
                     entry.status = `${entry.status} ${summary ? `| ${summary}` : ''}`;
                   }
                 } catch (e) {
-                  entry.status = `${entry.status} | DNS 检测错误`;
+                  entry.status = `${entry.status} | DNS 检测错误: ${this._parseFetchError(e)}`;
                 }
               }
               dead.push(entry);
             }
           } catch (e) {
-            const entry = { id: b.id, title: b.title, url: b.url, status: '网络错误' };
+            const entry = { id: b.id, title: b.title, url: b.url, status: this._parseFetchError(e) };
             if (this.settings.deadEnableDnsCheck) {
               try {
                 const domain = this._extractDomain(b.url);
@@ -2643,6 +2651,21 @@ class OptionsManager {
       const filtered = (this.settings.deadEnableDnsCheck && this.settings.deadIgnoreDnsOk)
         ? dead.filter(d => !(d.dns && d.dns.status === 'ok'))
         : dead;
+      // 按错误类型 + 域名排序（域名从右往左排，TLD 优先）
+      filtered.sort((a, b) => {
+        if (a.status !== b.status) return a.status.localeCompare(b.status);
+        const getDomainParts = (url) => {
+          try { return new URL(url).hostname.split('.').reverse(); } catch { return []; }
+        };
+        const partsA = getDomainParts(a.url);
+        const partsB = getDomainParts(b.url);
+        const len = Math.min(partsA.length, partsB.length);
+        for (let i = 0; i < len; i++) {
+          const cmp = partsA[i].localeCompare(partsB[i]);
+          if (cmp !== 0) return cmp;
+        }
+        return partsA.length - partsB.length;
+      });
 
       if (filtered.length === 0) {
         containerEl.hidden = false;
@@ -3125,13 +3148,16 @@ class OptionsManager {
           this._urlCheckCache.set(url, result);
           return result;
         } catch (e2) {
+          let lastErr = e2;
           try {
             await fetch(url, { method: 'GET', mode: 'no-cors', redirect: 'follow', credentials: 'omit', cache: 'no-store' });
             const result = { ok: true, status: 0, statusText: 'opaque' };
             this._urlCheckCache.set(url, result);
             return result;
-          } catch (e3) {}
-          const result = { ok: false, status: 0, statusText: '网络错误或超时' };
+          } catch (e3) {
+            lastErr = e3;
+          }
+          const result = { ok: false, status: 0, statusText: this._parseFetchError(lastErr) };
           this._urlCheckCache.set(url, result);
           return result;
         }
@@ -3142,11 +3168,21 @@ class OptionsManager {
         this._urlCheckCache.set(url, result);
         return result;
       } catch (e3) {
-        const result = { ok: false, status: 0, statusText: '网络错误或超时' };
+        const result = { ok: false, status: 0, statusText: this._parseFetchError(e3) };
         this._urlCheckCache.set(url, result);
         return result;
       }
     }
+  }
+
+  // 解析 fetch 错误，返回更具体的错误描述
+  _parseFetchError(e) {
+    if (!e) return '未知错误';
+    const msg = e.message ? e.message.toLowerCase() : '';
+    if (msg.includes('aborted')) return '请求超时';
+    if (msg.includes('cors') || msg.includes('access-control')) return 'CORS 错误';
+    if (msg.includes('failed to fetch') || msg.includes('fetch failed')) return '连接失败';
+    return '网络错误或超时';
   }
 
   async checkUrlAliveGet(url, { timeoutMs = 5000 } = {}) {
@@ -3184,6 +3220,24 @@ class OptionsManager {
       }
       this._hostLastTime[host] = Date.now();
     } catch {}
+  }
+
+  // 检查 URL 域名是否在跳过清单中（支持子域名匹配）
+  _isDomainSkipped(url) {
+    const skipDomains = this.settings.deadSkipDomains || [];
+    if (skipDomains.length === 0) return false;
+    try {
+      const hostname = new URL(url).hostname;
+      const matched = skipDomains.find(domain =>
+        hostname === domain || hostname.endsWith('.' + domain)
+      );
+      if (matched) {
+        console.log(`[deadScan] 跳过: ${url} (匹配 ${matched})`);
+      }
+      return !!matched;
+    } catch {
+      return false;
+    }
   }
 
   escapeHtml(text) {
