@@ -592,6 +592,9 @@ select:focus {
 }
 
 .rule-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
@@ -599,6 +602,7 @@ select:focus {
   margin: 8px 0;
   transition: all 0.2s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  cursor: default;
 }
 
 .rule-item:hover {
@@ -607,8 +611,41 @@ select:focus {
   transform: translateY(-1px);
 }
 
+.rule-item.dragging {
+  opacity: 0.5;
+}
+
+.rule-item.drag-over {
+  border-color: #3b82f6;
+  border-style: dashed;
+  background: #f0f7ff;
+}
+
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  flex-shrink: 0;
+  cursor: grab;
+  color: #94a3b8;
+  font-size: 18px;
+  line-height: 1;
+  user-select: none;
+  padding-top: 2px;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-handle:hover {
+  color: #3b82f6;
+}
+
 .rule-content {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
 }
 
 .rule-header {

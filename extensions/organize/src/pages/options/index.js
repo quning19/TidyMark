@@ -2180,6 +2180,8 @@ class OptionsManager {
   createRuleElement(rule, index) {
     const div = document.createElement('div');
     div.className = 'rule-item';
+    div.draggable = true;
+    div.dataset.ruleIndex = index;
     const nameTranslated = (window.I18n && window.I18n.translateCategoryByName)
       ? window.I18n.translateCategoryByName(rule.category)
       : rule.category;
@@ -2189,6 +2191,7 @@ class OptionsManager {
     const tEditTitle = window.I18n ? (window.I18n.t('rules.edit') || '编辑规则') : '编辑规则';
     const tDeleteTitle = window.I18n ? (window.I18n.t('rules.delete') || '删除规则') : '删除规则';
     div.innerHTML = `
+      <div class="drag-handle" title="拖动排序">⋮⋮</div>
       <div class="rule-content">
         <div class="rule-header">
           <h3 class="rule-category">${nameTranslated}</h3>
@@ -2211,16 +2214,66 @@ class OptionsManager {
         </div>
       </div>
     `;
-    
-    // 绑定事件
+
+    // 绑定编辑/删除事件
     const editBtn = div.querySelector('.edit-rule-btn');
     const deleteBtn = div.querySelector('.delete-rule-btn');
-    
+
     editBtn.addEventListener('click', () => this.editRule(index));
     deleteBtn.addEventListener('click', () => this.deleteRule(index));
-    
+
+    // 绑定拖拽排序事件
+    div.addEventListener('dragstart', (e) => this._onDragStart(e, index));
+    div.addEventListener('dragover', (e) => this._onDragOver(e));
+    div.addEventListener('dragenter', (e) => this._onDragEnter(e));
+    div.addEventListener('dragleave', (e) => this._onDragLeave(e));
+    div.addEventListener('drop', (e) => this._onDrop(e, index));
+    div.addEventListener('dragend', (e) => this._onDragEnd(e));
+
     return div;
   }
+
+  _onDragStart(e, index) {
+    this._dragSourceIndex = index;
+    e.currentTarget.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+  }
+
+  _onDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }
+
+  _onDragEnter(e) {
+    e.preventDefault();
+    e.currentTarget.classList.add('drag-over');
+  }
+
+  _onDragLeave(e) {
+    e.currentTarget.classList.remove('drag-over');
+  }
+
+  _onDrop(e, targetIndex) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    const sourceIndex = this._dragSourceIndex;
+    if (sourceIndex == null || sourceIndex === targetIndex) return;
+    const [moved] = this.classificationRules.splice(sourceIndex, 1);
+    this.classificationRules.splice(targetIndex, 0, moved);
+    this.settings.classificationRules = this.classificationRules;
+    this.saveSettings();
+    this.updateClassificationRules();
+    this._dragSourceIndex = null;
+  }
+
+  _onDragEnd(e) {
+    e.currentTarget.classList.remove('dragging');
+    document.querySelectorAll('.rule-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+    this._dragSourceIndex = null;
+  }
+
+
 
   // 更新默认分类预览
   updateDefaultCategories() {
