@@ -1354,15 +1354,26 @@ async function maybeRunDailyWebdavAutoSync(trigger = 'manual') {
 
 // 自动分类书签
 async function autoClassifyBookmarks(options = {}) {
+  // classificationRules stored in local (too large for sync 8KB per-item limit)
+  const { dryRun = false } = options;
+  let rules;
+  let classificationRules, classificationLanguage;
   try {
-    const { dryRun = false } = options;
-    // 获取分类规则
-    let rules;
     try {
-      const { classificationRules, classificationLanguage } = await chrome.storage.sync.get(['classificationRules', 'classificationLanguage']);
-      const lang = resolveClassificationLanguage(classificationLanguage);
-      rules = classificationRules || getDefaultClassificationRules(lang);
-      console.log('[autoClassify] 规则加载完成:', Array.isArray(rules) ? rules.length : 0);
+      const localRules = await chrome.storage.local.get(['classificationRules']);
+      if (Array.isArray(localRules.classificationRules)) {
+        classificationRules = localRules.classificationRules;
+        const syncLang = await chrome.storage.sync.get(['classificationLanguage']);
+        classificationLanguage = syncLang.classificationLanguage;
+      } else {
+        const sync = await chrome.storage.sync.get(['classificationRules', 'classificationLanguage']);
+        classificationRules = sync.classificationRules;
+        classificationLanguage = sync.classificationLanguage;
+      }
+    } catch (_) {}
+    const lang = resolveClassificationLanguage(classificationLanguage);
+    rules = classificationRules || getDefaultClassificationRules(lang);
+    console.log('[autoClassify] 规则加载完成:', Array.isArray(rules) ? rules.length : 0);
     } catch (e) {
       console.warn('[autoClassify] 规则加载失败，使用默认规则:', e);
       const { classificationLanguage } = await chrome.storage.sync.get('classificationLanguage');
@@ -1552,10 +1563,6 @@ async function autoClassifyBookmarks(options = {}) {
 
     console.log('自动分类完成:', results);
     return results;
-  } catch (error) {
-    console.error('自动分类失败:', error);
-    throw error;
-  }
 }
 
 // 常见文件扩展名，用于排除短关键词在 URL 中的误匹配
@@ -1606,36 +1613,60 @@ function classifyBookmark(bookmark, rules) {
   return '其他';
 }
 
+// 单层文件夹查找或创建（内部辅助函数）
+async function findOrCreateFolderSingle(name, parentIdArg) {
+  const effectiveParentId = parentIdArg || '1';
+  const searchParentId = parentIdArg || '';
+
+  const results = await chrome.bookmarks.search(name);
+  let folder = null;
+
+  if (typeof name === 'string') {
+    if (searchParentId) {
+      folder = results.find(item => !item.url && item.title === name && String(item.parentId) === searchParentId);
+    } else {
+      folder = results.find(item => !item.url && item.title === name);
+    }
+  }
+
+  if (folder) {
+    return folder;
+  }
+
+  const newFolder = await chrome.bookmarks.create({
+    title: name,
+    parentId: effectiveParentId
+  });
+  return newFolder;
+}
+
 // 查找或创建文件夹（若提供 parentId，仅在该父目录下匹配/创建）
+// 支持层次化路径：name 包含 '/' 时，逐段创建嵌套文件夹（如 "技术/前端框架" → 技术 > 前端框架）
 async function findOrCreateFolder(name) {
   try {
     const hasOptions = (typeof arguments[1] === 'object' && arguments[1]);
     const specifiedParentId = hasOptions && arguments[1].parentId ? String(arguments[1].parentId) : '';
 
-    // 搜索现有同名文件夹
-    const results = await chrome.bookmarks.search(name);
-    let folder = null;
-    if (typeof name === 'string') {
-      if (specifiedParentId) {
-        // 严格限定：只复用同一父目录下的同名文件夹
-        folder = results.find(item => !item.url && item.title === name && String(item.parentId) === specifiedParentId);
-      } else {
-        // 未指定父目录时，可复用任意同名文件夹
-        folder = results.find(item => !item.url && item.title === name);
+    // 层次化路径支持：按 '/' 拆分，逐段查找/创建
+    if (typeof name === 'string' && name.includes('/')) {
+      const segments = name.split('/').map(s => s.trim()).filter(s => s.length > 0);
+      if (segments.length === 0) {
+        return await findOrCreateFolderSingle(name.trim() || '未分类', specifiedParentId || '1');
       }
-    }
 
-    if (folder) {
+      let currentParentId = specifiedParentId || '1';
+      let folder = null;
+
+      for (const segment of segments) {
+        folder = await findOrCreateFolderSingle(segment, currentParentId);
+        currentParentId = folder.id;
+      }
+
       return folder;
     }
 
-    // 未找到则在目标父目录下创建（未指定时默认书签栏 '1'）
-    const parentId = specifiedParentId || '1';
-    const newFolder = await chrome.bookmarks.create({
-      title: name,
-      parentId
-    });
-    return newFolder;
+    // 扁平名称（无 '/'），保持原有行为
+    return await findOrCreateFolderSingle(name, specifiedParentId);
   } catch (error) {
     console.error(`创建文件夹 "${name}" 失败:`, error);
     throw error;
@@ -1921,7 +1952,14 @@ function salvageReassignedItemsFromText(text) {
   };
 }
 async function refinePreviewWithAI(preview) {
-  const settings = await chrome.storage.sync.get(['enableAI', 'aiProvider', 'aiApiKey', 'aiApiUrl', 'aiModel', 'maxTokens', 'classificationLanguage', 'maxCategories', 'aiBatchSize', 'aiConcurrency', 'classificationRules']);
+  const settings = await chrome.storage.sync.get(['enableAI', 'aiProvider', 'aiApiKey', 'aiApiUrl', 'aiModel', 'maxTokens', 'classificationLanguage', 'maxCategories', 'aiBatchSize', 'aiConcurrency']);
+  // classificationRules stored in local (too large for sync 8KB per-item limit)
+  try {
+    const localRules = await chrome.storage.local.get(['classificationRules']);
+    if (Array.isArray(localRules.classificationRules)) {
+      settings.classificationRules = localRules.classificationRules;
+    }
+  } catch (_) {}
   if (!settings.enableAI) {
     return preview;
   }
@@ -2837,7 +2875,20 @@ async function showAddNotification({ title, url, category }) {
 // 处理右键菜单点击
 chrome.contextMenus?.onClicked.addListener(async (info, tab) => {
   try {
-    const { classificationRules, classificationLanguage } = await chrome.storage.sync.get(['classificationRules', 'classificationLanguage']);
+    // classificationRules stored in local (too large for sync 8KB per-item limit)
+    let classificationRules, classificationLanguage;
+    try {
+      const localRules = await chrome.storage.local.get(['classificationRules']);
+      if (Array.isArray(localRules.classificationRules)) {
+        classificationRules = localRules.classificationRules;
+        const syncLang = await chrome.storage.sync.get(['classificationLanguage']);
+        classificationLanguage = syncLang.classificationLanguage;
+      } else {
+        const sync = await chrome.storage.sync.get(['classificationRules', 'classificationLanguage']);
+        classificationRules = sync.classificationRules;
+        classificationLanguage = sync.classificationLanguage;
+      }
+    } catch (_) {}
     const lang = resolveClassificationLanguage(classificationLanguage);
     const rules = classificationRules || getDefaultClassificationRules(lang);
 

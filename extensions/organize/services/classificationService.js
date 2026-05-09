@@ -371,24 +371,35 @@ class ClassificationService {
     }
   }
 
-  // 查找或创建文件夹
+  // 单层文件夹查找或创建（内部辅助方法）
+  async _findOrCreateFolderSingle(name, parentId) {
+    const results = await chrome.bookmarks.search({ title: name });
+    const existingFolder = results.find(item => !item.url && item.parentId === parentId);
+    if (existingFolder) return existingFolder;
+    const newFolder = await chrome.bookmarks.create({ title: name, parentId });
+    return newFolder;
+  }
+
+  // 查找或创建文件夹（支持层次化路径：name 包含 '/' 时逐段创建嵌套文件夹）
   async findOrCreateFolder(name, parentId = '1') {
     try {
-      // 搜索现有文件夹
-      const results = await chrome.bookmarks.search({ title: name });
-      const existingFolder = results.find(item => !item.url && item.parentId === parentId);
-      
-      if (existingFolder) {
-        return existingFolder;
+      // 层次化路径支持
+      if (typeof name === 'string' && name.includes('/')) {
+        const segments = name.split('/').map(s => s.trim()).filter(s => s.length > 0);
+        if (segments.length === 0) {
+          return await this._findOrCreateFolderSingle(name.trim() || '未分类', parentId);
+        }
+        let currentParentId = parentId;
+        let folder = null;
+        for (const segment of segments) {
+          folder = await this._findOrCreateFolderSingle(segment, currentParentId);
+          currentParentId = folder.id;
+        }
+        return folder;
       }
 
-      // 创建新文件夹
-      const newFolder = await chrome.bookmarks.create({
-        title: name,
-        parentId: parentId
-      });
-      
-      return newFolder;
+      // 扁平名称
+      return await this._findOrCreateFolderSingle(name, parentId);
     } catch (error) {
       console.error(`创建文件夹 "${name}" 失败:`, error);
       throw error;

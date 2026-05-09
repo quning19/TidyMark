@@ -233,8 +233,33 @@ class BookmarkService {
     }
   }
 
-  // 查找或创建文件夹
+  // 在指定父目录下查找或创建文件夹（内部辅助方法）
+  async _findOrCreateFolderSingle(title, parentId) {
+    const results = await chrome.bookmarks.search({ title });
+    let folder = results.find(item => !item.url && String(item.parentId) === String(parentId));
+    if (folder) return folder;
+    folder = await this.createFolder(title, parentId);
+    return folder;
+  }
+
+  // 查找或创建文件夹（支持层次化路径：title 包含 '/' 时逐段创建嵌套文件夹）
   async findOrCreateFolder(title, parentId = '1') {
+    // 层次化路径支持
+    if (typeof title === 'string' && title.includes('/')) {
+      const segments = title.split('/').map(s => s.trim()).filter(s => s.length > 0);
+      if (segments.length === 0) {
+        return await this._findOrCreateFolderSingle(title.trim() || '未分类', parentId);
+      }
+      let currentParentId = parentId;
+      let folder = null;
+      for (const segment of segments) {
+        folder = await this._findOrCreateFolderSingle(segment, currentParentId);
+        currentParentId = folder.id;
+      }
+      return folder;
+    }
+
+    // 扁平名称
     let folder = await this.findFolder(title);
     if (!folder) {
       folder = await this.createFolder(title, parentId);

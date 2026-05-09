@@ -87,6 +87,14 @@ class OptionsManager {
           // Misc：快捷键打开搜索的开关
           'quickSearchShortcutEnabled'
         ]);
+
+        // classificationRules may exceed sync 8KB per-item limit; stored in local instead
+        try {
+          const localRules = await chrome.storage.local.get(['classificationRules']);
+          if (Array.isArray(localRules.classificationRules)) {
+            result.classificationRules = localRules.classificationRules;
+          }
+        } catch (_) {}
       } else {
         // 在非扩展环境中使用localStorage作为fallback
         const keys = [
@@ -340,7 +348,12 @@ class OptionsManager {
 
       // 检查是否在Chrome扩展环境中
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
-        await chrome.storage.sync.set(this.settings);
+        // classificationRules 可能超过 sync 单项 8KB 限制，拆分到 local 存储
+        const { classificationRules, ...syncSettings } = this.settings;
+        await chrome.storage.sync.set(syncSettings);
+        if (classificationRules !== undefined) {
+          await chrome.storage.local.set({ classificationRules });
+        }
       } else {
         // 在非扩展环境中使用localStorage作为fallback
         Object.keys(this.settings).forEach(key => {
@@ -2233,6 +2246,16 @@ class OptionsManager {
     e.currentTarget.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', index.toString());
+    // 视口边缘自动滚动
+    this._dragAutoScroll = (ev) => {
+      const margin = 48;
+      const speed = 12;
+      const y = ev.clientY;
+      const vh = window.innerHeight;
+      if (y < margin) window.scrollBy({ top: -speed, behavior: 'auto' });
+      else if (y > vh - margin) window.scrollBy({ top: speed, behavior: 'auto' });
+    };
+    document.addEventListener('dragover', this._dragAutoScroll);
   }
 
   _onDragOver(e) {
@@ -2265,6 +2288,10 @@ class OptionsManager {
   _onDragEnd(e) {
     e.currentTarget.classList.remove('dragging');
     document.querySelectorAll('.rule-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+    if (this._dragAutoScroll) {
+      document.removeEventListener('dragover', this._dragAutoScroll);
+      this._dragAutoScroll = null;
+    }
     this._dragSourceIndex = null;
   }
 

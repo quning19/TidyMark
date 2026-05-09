@@ -1,179 +1,324 @@
-// Default rules by language. Keep keywords largely language-agnostic.
+// Default classification rules with hierarchical English categories.
+// Priority is positional: first match wins (top → bottom).
+// Category names use "/" to create nested folder structures.
 (function () {
-  const rules_zhCN = [
-    { category: '开源与代码托管', keywords: ['github', 'gitlab', 'gitee', 'bitbucket', 'source code', 'repository', 'repo'] },
-    { category: '开发文档与API', keywords: ['docs', 'documentation', 'api', 'sdk', 'developer', 'developers', 'reference', '文档', '接口'] },
-    { category: '前端框架', keywords: ['react', 'vue', 'angular', 'svelte', 'nextjs', 'nuxt', 'vite', 'webpack', 'babel', 'preact', 'solidjs', 'ember'] },
-    { category: '后端框架', keywords: ['spring', 'springboot', 'django', 'flask', 'fastapi', 'express', 'koa', 'rails', 'laravel', 'nestjs', 'micronaut', 'quarkus', 'fastify', 'hapi', 'gin', 'asp.net', 'dotnet', 'phoenix'] },
-    { category: '云服务与DevOps', keywords: ['aws', 'azure', 'gcp', 'cloud', 'kubernetes', 'k8s', 'docker', 'ci', 'cd', 'devops', 'terraform', 'cloudflare', 'vercel', 'netlify', 'digitalocean', 'heroku', 'render', 'linode', 'railway'] },
-    { category: '数据库与数据', keywords: ['mysql', 'postgres', 'mongodb', 'redis', 'sqlite', 'elasticsearch', 'clickhouse', 'snowflake', 'data', '数据库', 'mariadb', 'oracle', 'sql server', 'mssql', 'dynamodb', 'bigquery', 'firestore', 'cassandra'] },
-    { category: '数据科学与分析', keywords: ['kaggle', 'jupyter', 'databricks', 'data science', '数据科学', 'pandas', 'numpy'] },
-    { category: 'API测试与开发', keywords: ['postman', 'insomnia', 'swagger', 'openapi', 'api 测试'] },
-    { category: 'AI与机器学习', keywords: ['ai', 'ml', 'deep learning', 'transformer', 'openai', 'huggingface', 'stable diffusion', 'llm', '机器学习', 'tensorflow', 'pytorch'] },
-    { category: '产品设计', keywords: ['product', 'ux', 'ui', 'prototype', '设计', '交互', '体验'] },
-    { category: '设计资源与素材', keywords: ['dribbble', 'behance', 'figma', 'psd', 'svg', 'icon', 'font', '素材', '配色', 'icons8', 'fontawesome', 'coolors', 'colorhunt'] },
-    { category: '学习教程与课程', keywords: ['course', '教程', 'tutorial', 'learn', '学习', 'udemy', 'coursera', 'edx', 'pluralsight', 'codecademy', 'freecodecamp'] },
-    { category: '技术博客与社区', keywords: ['blog', '博客', 'medium', 'dev.to', 'reddit', '讨论', 'community', '论坛', 'hashnode'] },
-    { category: '新闻资讯与媒体', keywords: ['news', '资讯', 'headline', '媒体', 'press', 'newsletter', 'techcrunch', 'hacker news', 'wired', 'theverge'] },
-    { category: '在线工具与服务', keywords: ['tool', '工具', 'software', 'app', '应用', 'utility', 'converter', 'online', 'remove.bg', 'smallpdf', 'ilovepdf', 'tinypng', 'tinyurl'] },
-    { category: '下载与资源', keywords: ['download', '下载', '镜像', '资源', 'release', 'npmjs', 'pypi', 'maven', 'rubygems', 'crates.io'] },
-    { category: '视频与音乐', keywords: ['youtube', 'bilibili', 'netflix', 'spotify', 'video', '音乐', '音频', 'vimeo', 'soundcloud', 'apple music'] },
-    { category: '游戏与娱乐', keywords: ['game', 'gaming', 'steam', 'xbox', 'ps5', '游戏', '娱乐', 'epic', 'uplay', 'origin', 'battlenet', 'psn', 'nintendo'] },
-    { category: '购物电商', keywords: ['shop', '购物', 'buy', '购买', 'store', '商店', 'mall', '商城', 'taobao', 'jd', 'amazon', 'aliexpress', 'etsy', 'ebay', 'shopify'] },
-    { category: '社交媒体', keywords: ['twitter', 'x.com', 'facebook', 'instagram', 'tiktok', 'linkedin', '社交', '分享', '社区', 'discord', 'telegram'] },
-    { category: '办公与协作', keywords: ['notion', 'confluence', 'slack', 'teams', 'jira', 'office', '文档', '协作', 'drive', 'google drive', 'dropbox', 'onedrive', 'monday', 'miro'] },
-    { category: '笔记与知识库', keywords: ['obsidian', 'evernote', 'note', 'wiki', '知识库'] },
-    { category: '项目与任务管理', keywords: ['asana', 'trello', 'todoist', 'clickup', 'kanban', '项目管理', '任务'] },
-    { category: '地图与导航', keywords: ['google maps', 'maps', 'gaode', '高德', 'baidu map', '百度地图', 'openstreetmap', 'osm', '导航'] },
-    { category: '博客平台与CMS', keywords: ['wordpress', 'ghost', 'blogger', 'cms', '内容管理'] },
-    { category: '邮件与通讯', keywords: ['gmail', 'outlook', 'mail', '邮箱', 'imap', 'smtp', 'message', 'chat', 'protonmail', 'fastmail', 'zoho mail', 'mailchimp', 'sendgrid'] },
-    { category: '求职与招聘', keywords: ['jobs', '招聘', '求职', 'career', 'hr', '猎头', '简历', 'indeed', 'glassdoor', 'lever', 'greenhouse', '拉勾', 'boss直聘', '前程无忧'] },
-    { category: '金融与理财', keywords: ['bank', 'finance', '投资', '基金', '股票', 'trading', 'crypto', '区块链', 'paypal', 'stripe', 'alipay', 'wechat pay', 'wise'] },
-    { category: '生活服务', keywords: ['生活', '服务', '家政', '外卖', '出行', '住宿', '旅游', 'uber', 'didi', '美团', '饿了么', 'airbnb', 'booking', 'trip', 'expedia'] },
-    { category: '阅读与电子书', keywords: ['read', '阅读', '电子书', 'epub', 'pdf', 'kindle', 'goodreads', 'gutenberg', 'scribd'] },
-    { category: '科研与论文', keywords: ['arxiv', '论文', 'research', '科研', 'paper', 'citation', 'nature', 'science', 'springer', 'ieee', 'acm', 'doi', 'researchgate'] },
-    { category: '浏览器与扩展', keywords: ['extension', '插件', 'chrome web store', 'edge add-ons', '浏览器', 'addons.mozilla.org', 'opera addons'] },
-    { category: '摄影与照片', keywords: ['photography', 'photo', '照片', '攝影', 'camera', '拍照', '拍摄'] },
-    { category: '图片处理与修图', keywords: ['lightroom', 'photoshop', 'capture one', '修图', '编辑', 'raw', '后期', '色彩', 'affinity photo', 'gimp', 'luminar'] },
-    { category: '器材与评测', keywords: ['dslr', 'mirrorless', '微单', '单反', '镜头', 'lens', '评测', 'review', 'dxomark', 'cameralabs'] },
-    { category: '图片托管与分享', keywords: ['flickr', '500px', 'unsplash', 'pixabay', 'pexels', '图库', 'portfolio', '作品集', '图床', 'imgur', 'pixiv'] },
-    { category: '摄影品牌与官网', keywords: ['canon', 'nikon', 'sonyalpha', 'fujifilm', 'leica', 'sigma', 'tamron', '富士', '徕卡'] },
-    { category: '器材评测与资讯', keywords: ['dpreview', 'petapixel', 'fstoppers', '评测', '测评', '资讯'] },
-    { category: '版权素材与购买', keywords: ['getty', 'gettyimages', 'shutterstock', 'adobe stock', 'istock', 'pond5', '版权', '素材购买'] },
-    { category: '摄影教程与灵感', keywords: ['教程', 'tips', 'composition', '构图', '布光', '灵感', 'inspiration', 'kelbyone', 'phlearn'] },
+  const rules = [
+    // ── AI & Machine Learning ──
+    { category: 'AI & Machine Learning', keywords: [
+      'ai', 'ml', 'deep learning', 'openai', 'huggingface', 'stable diffusion',
+      'llm', 'pytorch', 'tensorflow', 'midjourney', 'invokeai', 'colab',
+      'transformer', 'gpt', 'claude', 'gemini', 'copilot', 'chatbot',
+      'neural network', 'diffusion model', 'langchain', 'llama', 'fine-tuning',
+      'embedding', 'dalle', 'runway', 'kaggle', 'jupyter', 'databricks',
+      'data science', 'pandas', 'numpy',
+      '深度学习', '机器学习', '人工智能', '大模型', '数据科学', '神经网络'
+    ] },
+
+    // ── Development ──
+    { category: 'Development/Code Hosting', keywords: [
+      'github', 'gitlab', 'gitee', 'bitbucket', 'repository', 'repo',
+      'source code', 'open source', 'version control', 'git',
+      '源码', '开源', '代码托管', '仓库'
+    ] },
+    { category: 'Development/Docs & API', keywords: [
+      'docs', 'documentation', 'api', 'sdk', 'developer', 'developers',
+      'reference', 'spec', 'protocol', 'mdn', 'postman', 'insomnia',
+      'swagger', 'openapi', 'graphql', 'rest api',
+      '文档', '接口', '开发文档', '技术规范'
+    ] },
+    { category: 'Development/Frontend', keywords: [
+      'react', 'vue', 'angular', 'svelte', 'nextjs', 'nuxt', 'vite',
+      'webpack', 'babel', 'typescript', 'javascript', 'ecmascript', 'css',
+      'html', 'frontend', 'tailwind', 'webgl', 'shader', 'three.js',
+      'node.js', 'npm', 'bun', 'electron', 'webassembly', 'wasm',
+      'jquery', 'echarts', 'bootstrap', 'sass', 'scss', 'pwa',
+      'web component', 'preact', 'solidjs', 'ember',
+      '前端', '小程序', 'miniprogram', '网页', 'h5'
+    ] },
+    { category: 'Development/Backend', keywords: [
+      'spring', 'springboot', 'django', 'flask', 'fastapi', 'express',
+      'nestjs', 'golang', 'rust', 'python', 'java', 'backend', 'gin',
+      'laravel', 'rails', 'asp.net', 'dotnet', 'csharp', 'php', 'kotlin',
+      'scala', 'microservice', 'micronaut', 'quarkus', 'fastify', 'hapi',
+      '后端', '服务端', '微服务'
+    ] },
+    { category: 'Development/Cloud & DevOps', keywords: [
+      'aws', 'azure', 'gcp', 'cloud', 'kubernetes', 'k8s', 'docker',
+      'ci/cd', 'devops', 'terraform', 'cloudflare', 'vercel', 'netlify',
+      'grafana', 'nginx', 'linux', 'server', 'heroku', 'digitalocean',
+      'linode', 'ansible', 'jenkins', 'github actions', 'prometheus',
+      'deployment', 'monitoring', 'render', 'railway',
+      '云服务', '运维', '部署', '服务器', '监控', '容器'
+    ] },
+    { category: 'Development/Databases', keywords: [
+      'mysql', 'postgres', 'mongodb', 'redis', 'sqlite', 'elasticsearch',
+      'clickhouse', 'database', 'sql', 'nosql', 'mariadb', 'oracle',
+      'mssql', 'dynamodb', 'bigquery', 'firestore', 'cassandra',
+      'neo4j', 'influxdb', 'prisma', 'typeorm', 'snowflake',
+      '数据库', '数据存储', '缓存'
+    ] },
+
+    // ── Games ──
+    { category: 'Games/Diablo', keywords: [
+      'diablo', 'd2r', 'd3', 'd4', 'maxroll', 'd2core', 'helltides',
+      'diablo2', 'arreat summit', 'runeword', 'rune word', 'horadric',
+      'sanctuary',
+      '暗黑破坏神', '暗黑', '凯恩之角', '赫拉迪姆'
+    ] },
+    { category: 'Games/Dyson Sphere', keywords: [
+      'dyson sphere', 'dsp', 'factoriolab', 'dspcalculator',
+      '戴森球', '戴森球计划'
+    ] },
+    { category: 'Games/Elden Ring', keywords: [
+      'elden ring',
+      '艾尔登法环', '老头环', '法环'
+    ] },
+    { category: 'Games/Brawl Stars', keywords: [
+      'brawl stars',
+      '荒野乱斗'
+    ] },
+    { category: 'Games/General', keywords: [
+      'game', 'gaming', 'steam', 'epic games', 'tap titans', 'wukong',
+      'build', 'guide', 'boss', 'skill tree', 'rune', 'ps5', 'playstation',
+      'xbox', 'nintendo', 'switch', 'battle.net', 'blizzard', 'esports',
+      'rog', 'razer', 'controller', 'gameplay', 'walkthrough', 'achievement',
+      'trophy', 'mod', 'dlc', 'mmo', 'mmorpg', 'rpg', 'fps',
+      '游戏', '攻略', '配装', '职业', '天赋', '技能', '符文', '战网',
+      '电竞', '手柄', '控制器', '网游', '单机', '手游', 'nga', 'gamersky',
+      'biligame', '3ds'
+    ] },
+
+    // ── Photography ──
+    { category: 'Photography/Gear & Reviews', keywords: [
+      'camera', 'lens', 'sony', 'canon', 'nikon', 'fujifilm', 'leica',
+      'sigma', 'tamron', 'dslr', 'mirrorless', 'dxomark', 'dpreview',
+      'cameralabs', 'petapixel', 'fstoppers', 'zeiss', 'hasselblad',
+      'olympus', 'panasonic', 'aperture', 'focal', 'iso', 'shutter',
+      'tripod', 'filter', 'sonyalpha',
+      '镜头', '相机', '微单', '单反', '评测', '测评', '器材',
+      '索尼', '佳能', '尼康', '富士', '徕卡', '适马'
+    ] },
+    { category: 'Photography/Editing', keywords: [
+      'lightroom', 'photoshop', 'capture one', 'raw', 'editing', 'retouch',
+      'color grading', 'lrtimelapse', 'luminar', 'affinity photo', 'gimp',
+      'portraiture', 'preset', 'lut', 'exposure', 'white balance', 'hdr',
+      'panorama', 'focus stacking',
+      '修图', '后期', '调色', '预设', '色彩', '磨皮', '液化'
+    ] },
+    { category: 'Photography/General', keywords: [
+      'photography', 'photo', 'inspiration', 'composition', 'lighting',
+      'flickr', '500px', 'unsplash', 'pixabay', 'pexels', 'gettyimages',
+      'shutterstock', 'adobe stock', 'istock', 'stock photo', 'portfolio',
+      'photowalk', 'kelbyone', 'phlearn', 'imgur', 'pixiv',
+      '摄影', '照片', '拍照', '拍摄', '灵感', '构图', '布光', '图库',
+      '图床', '素材', '作品集', '打光', '版权'
+    ] },
+
+    // ── Design ──
+    { category: 'Design', keywords: [
+      'figma', 'sketch', 'dribbble', 'behance', 'icon', 'font', 'svg',
+      'psd', 'ux', 'ui', 'prototype', 'icons8', 'fontawesome', 'coolors',
+      'colorhunt', 'canva', 'mastergo', 'mockup', 'wireframe',
+      'design system', 'material design', 'zeplin', 'framer', 'webflow',
+      'spline',
+      '设计', '配色', '交互', '体验', '产品设计', '蓝湖', '摹客',
+      '即时设计', '原型'
+    ] },
+
+    // ── Tools ──
+    { category: 'Tools/Online', keywords: [
+      'tool', 'utility', 'converter', 'online', 'remove.bg', 'smallpdf',
+      'ilovepdf', 'tinypng', 'tinify', 'regex', 'json formatter',
+      'beautifier', 'diff checker', 'generator', 'encoder', 'decoder',
+      'qr code', 'screenshot', 'software', 'app', 'tinyurl',
+      '工具', '转换', '在线工具', '生成器', '格式化', '应用'
+    ] },
+    { category: 'Tools/Downloads', keywords: [
+      'download', 'release', 'mirror', 'npmjs', 'pypi', 'maven',
+      'crates.io', 'rubygems', 'cracked', 'keygen', 'portable', 'repack',
+      '下载', '资源', '镜像', '百度网盘', '百度云', '阿里云盘', '破解',
+      '绿色版', '汉化'
+    ] },
+    { category: 'Tools/Extensions', keywords: [
+      'extension', 'plugin', 'addon', 'chrome web store',
+      'addons.mozilla.org', 'edge add-ons', 'userscript', 'tampermonkey',
+      'greasemonkey', 'violentmonkey',
+      '插件', '扩展', '浏览器', '油猴', '脚本'
+    ] },
+
+    // ── Knowledge ──
+    { category: 'Knowledge/Blogs & Forums', keywords: [
+      'blog', 'medium', 'dev.to', 'hashnode', 'forum', 'community',
+      'stackoverflow', 'stackexchange', 'wordpress', 'ghost', 'blogger',
+      'cms', 'csdn', 'cnblogs', 'jianshu', 'zhihu', 'segmentfault',
+      'freebuf', 'v2ex',
+      '博客', '论坛', '社区', '博客园', '简书', '知乎', '掘金',
+      '内容管理', '专栏', '讨论'
+    ] },
+    { category: 'Knowledge/News', keywords: [
+      'news', 'headline', 'press', 'newsletter', 'techcrunch', 'wired',
+      'theverge', 'arstechnica', 'engadget', 'hacker news',
+      '新闻', '资讯', '媒体', '头条', '36氪', '少数派', 'sspai',
+      'ithome', '快科技'
+    ] },
+    { category: 'Knowledge/Tutorials', keywords: [
+      'course', 'tutorial', 'learn', 'udemy', 'coursera', 'edx',
+      'pluralsight', 'freecodecamp', 'codecademy', 'frontend masters',
+      'egghead', 'khan academy', 'skillshare', 'bootcamp', 'certification',
+      '教程', '学习', '课程', '教育', '培训', '入门', '指南', '教学',
+      '视频教程'
+    ] },
+    { category: 'Knowledge/Research', keywords: [
+      'arxiv', 'paper', 'research', 'citation', 'nature', 'science',
+      'springer', 'ieee', 'acm', 'doi', 'researchgate', 'pubmed',
+      'google scholar', 'conference', 'journal', 'preprint',
+      '论文', '科研', '学术', '期刊', '文献'
+    ] },
+
+    // ── Media ──
+    { category: 'Media/Video & Music', keywords: [
+      'youtube', 'bilibili', 'netflix', 'video', 'music', 'vimeo',
+      'spotify', 'soundcloud', 'apple music', 'live stream', 'podcast',
+      'audiobook', 'disney plus', 'hbo max', 'hulu', 'audio',
+      '视频', '音乐', '哔哩哔哩', '直播', '播客', '音频'
+    ] },
+    { category: 'Media/Movies & TV', keywords: [
+      'movie', 'film', 'rarbg', 'm-team', 'bluray', 'imdb',
+      'rotten tomatoes', 'letterboxd', 'trakt', 'tmdb',
+      '电影', '字幕', '影视', '磁力', '磁链', '蓝光', '剧集', '美剧',
+      '日剧', '韩剧', 'pt站', '压制组'
+    ] },
+    { category: 'Media/Adult', keywords: [
+      'sex', 'porn', 'adult', 'xxx', 'nsfw', 'onlyfans', 'hentai',
+      'jav', 'erotic',
+      '成人', '色情', '福利', '大尺度', '里番'
+    ] },
+    { category: 'Media/Social', keywords: [
+      'twitter', 'facebook', 'instagram', 'tiktok', 'linkedin', 'discord',
+      'telegram', 'wechat', 'weibo', 'reddit', 'whatsapp', 'snapchat',
+      'pinterest', 'threads', 'signal', 'line', 'x.com',
+      '社交', '微信', '微博', '分享', '朋友圈'
+    ] },
+
+    // ── Productivity ──
+    { category: 'Productivity/Office', keywords: [
+      'notion', 'confluence', 'slack', 'teams', 'jira', 'google drive',
+      'google docs', 'dropbox', 'onedrive', 'monday', 'miro', 'lark',
+      'feishu', 'airtable', 'coda', 'google sheets', 'google slides',
+      'drive', 'office', 'docs',
+      '协作', '飞书', '腾讯文档', '钉钉', '语雀', '办公', '在线文档'
+    ] },
+    { category: 'Productivity/Notes', keywords: [
+      'obsidian', 'evernote', 'roam research', 'logseq', 'bear', 'onenote',
+      'apple notes', 'simplenote', 'markdown', 'second brain',
+      'zettelkasten', 'notepad', 'note',
+      '笔记', '知识库', '印象笔记', '备忘录', '知识管理'
+    ] },
+    { category: 'Productivity/Tasks', keywords: [
+      'asana', 'trello', 'todoist', 'clickup', 'kanban', 'tower', 'linear',
+      'basecamp', 'gantt', 'project management', 'task management',
+      'backlog', 'sprint', 'scrum', 'agile',
+      '项目管理', '任务', '甘特图', '看板', '敏捷'
+    ] },
+    { category: 'Productivity/Email', keywords: [
+      'gmail', 'outlook', 'mail', 'email', 'imap', 'smtp', 'protonmail',
+      'fastmail', 'zoho mail', 'mailchimp', 'sendgrid', 'thunderbird',
+      'exchange', 'message', 'chat',
+      '邮箱', '邮件', '通讯', '收件箱'
+    ] },
+
+    // ── Hardware ──
+    { category: 'Hardware/NAS', keywords: [
+      'nas', 'synology', 'plex', 'jellyfin', 'emby', 'unraid', 'truenas',
+      'freenas', 'qnap', 'home server', 'media server', 'raid',
+      'ds920', 'ds220',
+      '群晖', '家庭服务器', '私有云', '媒体服务器'
+    ] },
+    { category: 'Hardware/Network', keywords: [
+      'router', 'openwrt', 'asus router', 'mikrotik', 'ubiquiti', 'unifi',
+      'tp-link', 'xiaomi router', 'mesh wifi', 'switch', 'access point',
+      'firewall', 'pfsense', 'opnsense', 'vlan', 'dd-wrt', 'merlin',
+      '路由器', '网络设备', '交换机', '无线', '组网', '软路由', '旁路由'
+    ] },
+    { category: 'Hardware/PC', keywords: [
+      'cpu', 'gpu', 'motherboard', 'ram', 'ssd', 'nvme', 'pc build',
+      'noctua', 'gigabyte', 'msi', 'corsair', 'asus', 'cooling', 'psu',
+      'power supply', 'case', 'gaming pc', 'workstation', 'overclock',
+      'benchmark', 'monitor', 'keyboard', 'mouse', 'mechanical keyboard',
+      'display', 'graphics card',
+      '硬件', '装机', '散热', '主板', '内存', '显卡', '硬盘', '电源',
+      '机箱', '显示器', '机械键盘', '鼠标'
+    ] },
+
+    // ── Network ──
+    { category: 'Network/VPS & Proxy', keywords: [
+      'vps', 'vpn', 'proxy', 'v2ray', 'clash', 'shadowsocks',
+      'justmysocks', 'bandwagon', 'vultr', 'wireguard', 'trojan', 'xtls',
+      'hysteria', 'sing-box', 'surge', 'quantumult', 'shadowsocksr',
+      'vmess', 'vless', 'naiveproxy', 'cloudflare warp',
+      '代理', '翻墙', '梯子', '机场', '科学上网', '节点', '订阅'
+    ] },
+
+    // ── Shopping ──
+    { category: 'Shopping', keywords: [
+      'shop', 'store', 'buy', 'mall', 'amazon', 'aliexpress', 'ebay',
+      'etsy', 'shopify', 'taobao', 'jd', 'smzdm', 'tmall', 'pinduoduo',
+      'walmart', 'bestbuy', 'newegg', 'costco',
+      '购物', '购买', '淘宝', '京东', '什么值得买', '拼多多', '天猫',
+      '商店', '商城'
+    ] },
+
+    // ── Finance ──
+    { category: 'Finance', keywords: [
+      'bank', 'finance', 'invest', 'stock', 'trading', 'crypto',
+      'blockchain', 'paypal', 'stripe', 'alipay', 'wechat pay', 'wise',
+      'usdt', 'btc', 'bitcoin', 'ethereum', 'defi', 'nft', 'binance',
+      'coinbase', 'fund', 'forex', 'tax',
+      '金融', '投资', '股票', '加密货币', '支付宝', '微信支付', '理财',
+      '银行', '基金', '区块链'
+    ] },
+
+    // ── Jobs & Career ──
+    { category: 'Jobs & Career', keywords: [
+      'jobs', 'career', 'hr', 'resume', 'cv', 'indeed', 'glassdoor',
+      'lever', 'greenhouse', 'recruiter', 'interview', 'salary', 'offer',
+      '招聘', '求职', '简历', '拉勾', 'boss直聘', '前程无忧', '面试',
+      '猎头'
+    ] },
+
+    // ── Life ──
+    { category: 'Life/Travel', keywords: [
+      'maps', 'google maps', 'navigation', 'gaode', 'baidu map',
+      'openstreetmap', 'travel', 'uber', 'didi', 'airbnb', 'booking',
+      'expedia', 'hotel', 'flight', 'ticket', 'tour', 'trip', 'agoda',
+      'osm',
+      '地图', '导航', '高德', '百度地图', '旅游', '滴滴', '酒店', '机票',
+      '出行', '行程'
+    ] },
+    { category: 'Life/Reading', keywords: [
+      'read', 'reading', 'ebook', 'epub', 'kindle', 'goodreads',
+      'gutenberg', 'scribd', 'novel', 'comic', 'manga', 'book', 'library',
+      'zlibrary', 'annas-archive',
+      '阅读', '电子书', '小说', '漫画', '书籍', '图书馆'
+    ] },
+    { category: 'Life/Services', keywords: [
+      'food delivery', 'uber eats', 'healthcare', 'insurance',
+      'real estate', 'property', 'government', 'banking service',
+      'mobile plan', 'broadband', 'rides',
+      '生活', '服务', '外卖', '美团', '饿了么', '家政', '健康', '保险',
+      '房产', '宽带', '手机套餐', '住宿'
+    ] }
   ];
 
-  const rules_zhTW = [
-    { category: '開源與代碼託管', keywords: ['github', 'gitlab', 'gitee', 'bitbucket', 'source code', 'repository', 'repo'] },
-    { category: '開發文檔與API', keywords: ['docs', 'documentation', 'api', 'sdk', 'developer', 'developers', 'reference', '文件', '介面'] },
-    { category: '前端框架', keywords: ['react', 'vue', 'angular', 'svelte', 'nextjs', 'nuxt', 'vite', 'webpack', 'babel', 'preact', 'solidjs', 'ember'] },
-    { category: '後端框架', keywords: ['spring', 'springboot', 'django', 'flask', 'fastapi', 'express', 'koa', 'rails', 'laravel', 'nestjs', 'micronaut', 'quarkus', 'fastify', 'hapi', 'gin', 'asp.net', 'dotnet', 'phoenix'] },
-    { category: '雲服務與DevOps', keywords: ['aws', 'azure', 'gcp', 'cloud', 'kubernetes', 'k8s', 'docker', 'ci', 'cd', 'devops', 'terraform', 'cloudflare', 'vercel', 'netlify', 'digitalocean', 'heroku', 'render', 'linode', 'railway'] },
-    { category: '資料庫與資料', keywords: ['mysql', 'postgres', 'mongodb', 'redis', 'sqlite', 'elasticsearch', 'clickhouse', 'snowflake', 'data', '資料庫', 'mariadb', 'oracle', 'sql server', 'mssql', 'dynamodb', 'bigquery', 'firestore', 'cassandra'] },
-    { category: '數據科學與分析', keywords: ['kaggle', 'jupyter', 'databricks', 'data science', '數據科學', 'pandas', 'numpy'] },
-    { category: 'API測試與開發', keywords: ['postman', 'insomnia', 'swagger', 'openapi', 'api 測試'] },
-    { category: 'AI與機器學習', keywords: ['ai', 'ml', 'deep learning', 'transformer', 'openai', 'huggingface', 'stable diffusion', 'llm', '機器學習', 'tensorflow', 'pytorch'] },
-    { category: '產品設計', keywords: ['product', 'ux', 'ui', 'prototype', '設計', '互動', '體驗'] },
-    { category: '設計資源與素材', keywords: ['dribbble', 'behance', 'figma', 'psd', 'svg', 'icon', 'font', '素材', '配色', 'icons8', 'fontawesome', 'coolors', 'colorhunt'] },
-    { category: '學習教程與課程', keywords: ['course', '教程', 'tutorial', 'learn', '學習', 'udemy', 'coursera', 'edx', 'pluralsight', 'codecademy', 'freecodecamp'] },
-    { category: '技術博客與社區', keywords: ['blog', '博客', 'medium', 'dev.to', 'reddit', '社群', 'community', '論壇', 'hashnode'] },
-    { category: '新聞資訊與媒體', keywords: ['news', '資訊', 'headline', '媒體', 'press', 'newsletter', 'techcrunch', 'hacker news', 'wired', 'theverge'] },
-    { category: '在線工具與服務', keywords: ['tool', '工具', 'software', 'app', '應用', 'utility', 'converter', 'online', 'remove.bg', 'smallpdf', 'ilovepdf', 'tinypng', 'tinyurl'] },
-    { category: '下載與資源', keywords: ['download', '下載', '鏡像', '資源', 'release', 'npmjs', 'pypi', 'maven', 'rubygems', 'crates.io'] },
-    { category: '影片與音樂', keywords: ['youtube', 'bilibili', 'netflix', 'spotify', 'video', '音樂', '音訊', 'vimeo', 'soundcloud', 'apple music'] },
-    { category: '遊戲與娛樂', keywords: ['game', 'gaming', 'steam', 'xbox', 'ps5', '遊戲', '娛樂', 'epic', 'uplay', 'origin', 'battlenet', 'psn', 'nintendo'] },
-    { category: '購物電商', keywords: ['shop', '購物', 'buy', '購買', 'store', '商店', 'mall', '商城', 'taobao', 'jd', 'amazon', 'aliexpress', 'etsy', 'ebay', 'shopify'] },
-    { category: '社交媒體', keywords: ['twitter', 'x.com', 'facebook', 'instagram', 'tiktok', 'linkedin', '社交', '分享', '社群', 'discord', 'telegram'] },
-    { category: '辦公與協作', keywords: ['notion', 'confluence', 'slack', 'teams', 'jira', 'office', '文件', '協作', 'drive', 'google drive', 'dropbox', 'onedrive', 'monday', 'miro'] },
-    { category: '筆記與知識庫', keywords: ['obsidian', 'evernote', 'note', 'wiki', '知識庫'] },
-    { category: '專案與任務管理', keywords: ['asana', 'trello', 'todoist', 'clickup', 'kanban', '專案管理', '任務'] },
-    { category: '地圖與導航', keywords: ['google maps', 'maps', 'gaode', '高德', 'baidu map', '百度地圖', 'openstreetmap', 'osm', '導航'] },
-    { category: '部落格平台與CMS', keywords: ['wordpress', 'ghost', 'blogger', 'cms', '內容管理'] },
-    { category: '郵件與通訊', keywords: ['gmail', 'outlook', 'mail', '郵箱', 'imap', 'smtp', 'message', 'chat', 'protonmail', 'fastmail', 'zoho mail', 'mailchimp', 'sendgrid'] },
-    { category: '求職與招聘', keywords: ['jobs', '招聘', '求職', 'career', 'hr', '獵頭', '履歷', 'indeed', 'glassdoor', 'lever', 'greenhouse'] },
-    { category: '金融與理財', keywords: ['bank', 'finance', '投資', '基金', '股票', 'trading', 'crypto', '區塊鏈', 'paypal', 'stripe', 'alipay', 'wechat pay', 'wise'] },
-    { category: '生活服務', keywords: ['生活', '服務', '家政', '外送', '出行', '住宿', '旅遊', 'uber', 'airbnb', 'booking'] },
-    { category: '閱讀與電子書', keywords: ['read', '閱讀', '電子書', 'epub', 'pdf', 'kindle', 'goodreads', 'gutenberg'] },
-    { category: '科研與論文', keywords: ['arxiv', '論文', 'research', '科研', 'paper', 'citation', 'nature', 'science', 'springer', 'ieee', 'acm'] },
-    { category: '瀏覽器與擴充', keywords: ['extension', '外掛', 'chrome web store', 'edge add-ons', 'addons.mozilla.org'] },
-    { category: '攝影與照片', keywords: ['photography', 'photo', '照片', '攝影', 'camera'] },
-    { category: '圖片處理與修圖', keywords: ['lightroom', 'photoshop', 'capture one', '修圖', '編輯', 'raw', '後期'] },
-    { category: '器材與評測', keywords: ['dslr', 'mirrorless', '微單', '單反', '鏡頭', 'lens', '評測', 'review', 'dxomark', 'cameralabs'] },
-    { category: '圖片託管與分享', keywords: ['flickr', '500px', 'unsplash', 'pixabay', 'pexels', '圖庫', '作品集', '圖床', 'imgur', 'pixiv'] },
-    { category: '攝影品牌與官網', keywords: ['canon', 'nikon', 'sonyalpha', 'fujifilm', 'leica', 'sigma', 'tamron'] },
-    { category: '器材評測與資訊', keywords: ['dpreview', 'petapixel', 'fstoppers', '評測', '資訊'] },
-    { category: '版權素材與購買', keywords: ['getty', 'gettyimages', 'shutterstock', 'adobe stock', 'istock', 'pond5', '版權', '素材購買'] },
-    { category: '攝影教程與靈感', keywords: ['教程', 'tips', 'composition', '構圖', '布光', '靈感', 'inspiration', 'kelbyone', 'phlearn'] },
-  ];
-
-  const rules_en = [
-    { category: 'Open Source & Code Hosting', keywords: ['github', 'gitlab', 'bitbucket', 'source code', 'repository', 'repo'] },
-    { category: 'Developer Docs & APIs', keywords: ['docs', 'documentation', 'api', 'sdk', 'developer', 'developers', 'reference'] },
-    { category: 'Frontend Frameworks', keywords: ['react', 'vue', 'angular', 'svelte', 'nextjs', 'nuxt', 'vite', 'webpack', 'babel', 'preact', 'solidjs', 'ember'] },
-    { category: 'Backend Frameworks', keywords: ['spring', 'springboot', 'django', 'flask', 'fastapi', 'express', 'koa', 'rails', 'laravel', 'nestjs', 'micronaut', 'quarkus', 'fastify', 'hapi', 'gin', 'asp.net', 'dotnet', 'phoenix'] },
-    { category: 'Cloud & DevOps', keywords: ['aws', 'azure', 'gcp', 'cloud', 'kubernetes', 'k8s', 'docker', 'ci', 'cd', 'devops', 'terraform', 'cloudflare', 'vercel', 'netlify', 'digitalocean', 'heroku', 'render', 'linode', 'railway'] },
-    { category: 'Databases & Data', keywords: ['mysql', 'postgres', 'mongodb', 'redis', 'sqlite', 'elasticsearch', 'clickhouse', 'snowflake', 'data', 'mariadb', 'oracle', 'sql server', 'mssql', 'dynamodb', 'bigquery', 'firestore', 'cassandra'] },
-    { category: 'Data Science & Analytics', keywords: ['kaggle', 'jupyter', 'databricks', 'data science', 'pandas', 'numpy'] },
-    { category: 'API Testing & Development', keywords: ['postman', 'insomnia', 'swagger', 'openapi'] },
-    { category: 'AI & Machine Learning', keywords: ['ai', 'ml', 'deep learning', 'transformer', 'openai', 'huggingface', 'stable diffusion', 'llm', 'tensorflow', 'pytorch'] },
-    { category: 'Product Design', keywords: ['product', 'ux', 'ui', 'prototype', 'design'] },
-    { category: 'Design Resources & Assets', keywords: ['dribbble', 'behance', 'figma', 'psd', 'svg', 'icon', 'font', 'icons8', 'fontawesome', 'coolors', 'colorhunt'] },
-    { category: 'Tutorials & Courses', keywords: ['course', 'tutorial', 'learn', 'udemy', 'coursera', 'edx', 'pluralsight', 'codecademy', 'freecodecamp'] },
-    { category: 'Tech Blogs & Communities', keywords: ['blog', 'medium', 'dev.to', 'reddit', 'community', 'forum', 'hashnode'] },
-    { category: 'News & Media', keywords: ['news', 'headline', 'press', 'newsletter', 'techcrunch', 'hacker news', 'wired', 'theverge'] },
-    { category: 'Online Tools & Services', keywords: ['tool', 'software', 'app', 'utility', 'converter', 'online', 'remove.bg', 'smallpdf', 'ilovepdf', 'tinypng', 'tinyurl'] },
-    { category: 'Downloads & Packages', keywords: ['download', 'mirror', 'release', 'npmjs', 'pypi', 'maven', 'rubygems', 'crates.io'] },
-    { category: 'Video & Music', keywords: ['youtube', 'netflix', 'spotify', 'video', 'audio', 'vimeo', 'soundcloud', 'apple music'] },
-    { category: 'Games & Entertainment', keywords: ['game', 'gaming', 'steam', 'xbox', 'ps5', 'epic', 'uplay', 'origin', 'battlenet', 'psn', 'nintendo'] },
-    { category: 'Shopping & E‑commerce', keywords: ['shop', 'buy', 'store', 'mall', 'amazon', 'aliexpress', 'etsy', 'ebay', 'shopify'] },
-    { category: 'Social Media', keywords: ['twitter', 'x.com', 'facebook', 'instagram', 'tiktok', 'linkedin', 'discord', 'telegram'] },
-    { category: 'Office & Collaboration', keywords: ['notion', 'confluence', 'slack', 'teams', 'jira', 'docs', 'drive', 'google drive', 'dropbox', 'onedrive', 'monday', 'miro'] },
-    { category: 'Notes & Knowledge Bases', keywords: ['obsidian', 'evernote', 'note', 'wiki'] },
-    { category: 'Project & Task Management', keywords: ['asana', 'trello', 'todoist', 'clickup', 'kanban', 'project', 'task'] },
-    { category: 'Maps & Navigation', keywords: ['google maps', 'maps', 'openstreetmap', 'osm', 'gaode', 'baidu map'] },
-    { category: 'Blogging & CMS', keywords: ['wordpress', 'ghost', 'blogger', 'cms'] },
-    { category: 'Email & Communication', keywords: ['gmail', 'outlook', 'mail', 'imap', 'smtp', 'message', 'chat', 'protonmail', 'fastmail', 'zoho mail', 'mailchimp', 'sendgrid'] },
-    { category: 'Jobs & Recruiting', keywords: ['jobs', 'career', 'hr', 'resume', 'indeed', 'glassdoor', 'lever', 'greenhouse'] },
-    { category: 'Finance & Investing', keywords: ['bank', 'finance', 'investing', 'fund', 'stock', 'trading', 'crypto', 'blockchain', 'paypal', 'stripe', 'wise'] },
-    { category: 'Life Services', keywords: ['food delivery', 'rides', 'travel', 'uber', 'airbnb', 'booking', 'expedia'] },
-    { category: 'Reading & eBooks', keywords: ['read', 'ebook', 'epub', 'pdf', 'kindle', 'goodreads', 'gutenberg', 'scribd'] },
-    { category: 'Research & Papers', keywords: ['arxiv', 'paper', 'research', 'citation', 'nature', 'science', 'springer', 'ieee', 'acm', 'doi', 'researchgate'] },
-    { category: 'Browsers & Extensions', keywords: ['extension', 'chrome web store', 'edge add-ons', 'addons.mozilla.org'] },
-    { category: 'Photography & Photos', keywords: ['photography', 'photo', 'camera'] },
-    { category: 'Image Editing', keywords: ['lightroom', 'photoshop', 'capture one', 'raw', 'editing', 'color', 'affinity photo', 'gimp', 'luminar'] },
-    { category: 'Gear & Reviews', keywords: ['dslr', 'mirrorless', 'lens', 'review', 'dxomark', 'cameralabs'] },
-    { category: 'Photo Hosting & Sharing', keywords: ['flickr', '500px', 'unsplash', 'pixabay', 'pexels', 'portfolio', 'imgur', 'pixiv'] },
-    { category: 'Camera Brands', keywords: ['canon', 'nikon', 'sonyalpha', 'fujifilm', 'leica', 'sigma', 'tamron'] },
-    { category: 'Gear Reviews & News', keywords: ['dpreview', 'petapixel', 'fstoppers'] },
-    { category: 'Stock Assets & Purchase', keywords: ['getty', 'gettyimages', 'shutterstock', 'adobe stock', 'istock', 'pond5', 'stock'] },
-    { category: 'Photo Tutorials & Inspiration', keywords: ['tutorial', 'tips', 'composition', 'lighting', 'inspiration', 'kelbyone', 'phlearn'] },
-  ];
-
-  const rules_ru = [
-    { category: 'Открытый код и хостинг', keywords: ['github', 'gitlab', 'bitbucket', 'репозиторий', 'repo'] },
-    { category: 'Документация и API', keywords: ['docs', 'documentation', 'api', 'sdk', 'developer', 'reference'] },
-    { category: 'Фронтенд-фреймворки', keywords: ['react', 'vue', 'angular', 'svelte', 'nextjs', 'nuxt', 'vite', 'webpack', 'babel', 'preact', 'solidjs', 'ember'] },
-    { category: 'Бэкенд-фреймворки', keywords: ['spring', 'springboot', 'django', 'flask', 'fastapi', 'express', 'koa', 'rails', 'laravel', 'nestjs', 'micronaut', 'quarkus', 'fastify', 'hapi', 'gin', 'asp.net', 'dotnet', 'phoenix'] },
-    { category: 'Облако и DevOps', keywords: ['aws', 'azure', 'gcp', 'cloud', 'kubernetes', 'k8s', 'docker', 'ci', 'cd', 'devops', 'terraform', 'cloudflare', 'vercel', 'netlify', 'digitalocean', 'heroku', 'render', 'linode', 'railway'] },
-    { category: 'Базы данных и данные', keywords: ['mysql', 'postgres', 'mongodb', 'redis', 'sqlite', 'elasticsearch', 'clickhouse', 'snowflake', 'data', 'mariadb', 'oracle', 'sql server', 'mssql', 'dynamodb', 'bigquery', 'firestore', 'cassandra'] },
-    { category: 'Дата-сайенс и аналитика', keywords: ['kaggle', 'jupyter', 'databricks', 'data science', 'pandas', 'numpy'] },
-    { category: 'Тестирование и разработка API', keywords: ['postman', 'insomnia', 'swagger', 'openapi'] },
-    { category: 'ИИ и машинное обучение', keywords: ['ai', 'ml', 'deep learning', 'transformer', 'openai', 'huggingface', 'stable diffusion', 'llm', 'tensorflow', 'pytorch'] },
-    { category: 'Дизайн продукта', keywords: ['product', 'ux', 'ui', 'prototype', 'design'] },
-    { category: 'Дизайн-ресурсы и ассеты', keywords: ['dribbble', 'behance', 'figma', 'psd', 'svg', 'icon', 'font', 'icons8', 'fontawesome', 'coolors', 'colorhunt'] },
-    { category: 'Обучение и курсы', keywords: ['course', 'tutorial', 'learn', 'udemy', 'coursera', 'edx', 'pluralsight', 'codecademy', 'freecodecamp'] },
-    { category: 'Тех-блоги и сообщества', keywords: ['blog', 'medium', 'dev.to', 'reddit', 'community', 'forum', 'hashnode'] },
-    { category: 'Новости и СМИ', keywords: ['news', 'headline', 'press', 'newsletter', 'techcrunch', 'hacker news', 'wired', 'theverge'] },
-    { category: 'Онлайн-инструменты и сервисы', keywords: ['tool', 'software', 'app', 'utility', 'converter', 'online', 'remove.bg', 'smallpdf', 'ilovepdf', 'tinypng', 'tinyurl'] },
-    { category: 'Загрузки и ресурсы', keywords: ['download', 'mirror', 'release', 'npmjs', 'pypi', 'maven', 'rubygems', 'crates.io'] },
-    { category: 'Видео и музыка', keywords: ['youtube', 'netflix', 'spotify', 'video', 'audio', 'vimeo', 'soundcloud', 'apple music'] },
-    { category: 'Игры и развлечения', keywords: ['game', 'gaming', 'steam', 'xbox', 'ps5', 'epic', 'uplay', 'origin', 'battlenet', 'psn', 'nintendo'] },
-    { category: 'Покупки и e‑commerce', keywords: ['shop', 'buy', 'store', 'mall', 'amazon', 'aliexpress', 'etsy', 'ebay', 'shopify'] },
-    { category: 'Социальные сети', keywords: ['twitter', 'x.com', 'facebook', 'instagram', 'tiktok', 'linkedin', 'discord', 'telegram'] },
-    { category: 'Офис и совместная работа', keywords: ['notion', 'confluence', 'slack', 'teams', 'jira', 'docs', 'drive', 'google drive', 'dropbox', 'onedrive', 'monday', 'miro'] },
-    { category: 'Заметки и базы знаний', keywords: ['obsidian', 'evernote', 'note', 'wiki'] },
-    { category: 'Проекты и задачи', keywords: ['asana', 'trello', 'todoist', 'clickup', 'kanban', 'project', 'task'] },
-    { category: 'Карты и навигация', keywords: ['google maps', 'maps', 'openstreetmap', 'osm', 'gaode', 'baidu map'] },
-    { category: 'Блоги и CMS', keywords: ['wordpress', 'ghost', 'blogger', 'cms'] },
-    { category: 'Почта и коммуникации', keywords: ['gmail', 'outlook', 'mail', 'imap', 'smtp', 'message', 'chat', 'protonmail', 'fastmail', 'zoho mail', 'mailchimp', 'sendgrid'] },
-    { category: 'Работа и найм', keywords: ['jobs', 'career', 'hr', 'resume', 'indeed', 'glassdoor', 'lever', 'greenhouse'] },
-    { category: 'Финансы и инвестиции', keywords: ['bank', 'finance', 'investing', 'fund', 'stock', 'trading', 'crypto', 'blockchain', 'paypal', 'stripe', 'wise'] },
-    { category: 'Бытовые сервисы', keywords: ['food delivery', 'rides', 'travel', 'uber', 'airbnb', 'booking', 'expedia'] },
-    { category: 'Чтение и электронные книги', keywords: ['read', 'ebook', 'epub', 'pdf', 'kindle', 'goodreads', 'gutenberg'] },
-    { category: 'Наука и статьи', keywords: ['arxiv', 'paper', 'research', 'citation', 'nature', 'science', 'springer', 'ieee', 'acm'] },
-    { category: 'Браузеры и расширения', keywords: ['extension', 'chrome web store', 'edge add-ons', 'addons.mozilla.org'] },
-    { category: 'Фотография и фото', keywords: ['photography', 'photo', 'camera'] },
-    { category: 'Обработка изображений', keywords: ['lightroom', 'photoshop', 'capture one', 'raw', 'editing', 'color', 'affinity photo', 'gimp', 'luminar'] },
-    { category: 'Оборудование и обзоры', keywords: ['dslr', 'mirrorless', 'lens', 'review', 'dxomark', 'cameralabs'] },
-    { category: 'Хостинг и обмен фото', keywords: ['flickr', '500px', 'unsplash', 'pixabay', 'pexels', 'portfolio', 'imgur', 'pixiv'] },
-    { category: 'Бренды камер', keywords: ['canon', 'nikon', 'sonyalpha', 'fujifilm', 'leica', 'sigma', 'tamron'] },
-    { category: 'Обзоры и новости оборудования', keywords: ['dpreview', 'petapixel', 'fstoppers'] },
-    { category: 'Стоковые материалы и покупка', keywords: ['getty', 'gettyimages', 'shutterstock', 'adobe stock', 'istock', 'pond5', 'stock'] },
-    { category: 'Туториалы и вдохновение по фото', keywords: ['tutorial', 'tips', 'composition', 'lighting', 'inspiration', 'kelbyone', 'phlearn'] },
-  ];
+  // All language variants share the same English hierarchical categories
+  // and comprehensive keyword lists covering both Chinese and English.
+  const rules_zhCN = rules;
+  const rules_zhTW = rules;
+  const rules_en = rules;
+  const rules_ru = rules;
 
   function byLang(lang) {
-    if (!lang) return rules_zhCN;
+    if (!lang) return rules_en;
     const l = lang.toLowerCase();
     if (l.startsWith('zh-tw')) return rules_zhTW;
     if (l.startsWith('zh')) return rules_zhCN;
