@@ -500,7 +500,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         // 支持多范围：优先使用数组，其次兼容单值
         scopeFolderIds: Array.isArray(request.scopeFolderIds)
           ? request.scopeFolderIds.map(id => String(id)).filter(Boolean)
-          : (request.scopeFolderId ? [String(request.scopeFolderId)] : [])
+          : (request.scopeFolderId ? [String(request.scopeFolderId)] : []),
+        recursive: typeof request.recursive === 'boolean' ? request.recursive : true
       });
       break;
     case 'searchBookmarks':
@@ -639,7 +640,8 @@ async function handleOrganizeByAiInference(sendResponse, request = {}) {
     const scopeFolderIds = Array.isArray(request?.scopeFolderIds)
       ? request.scopeFolderIds.map(id => String(id)).filter(Boolean)
       : (request?.scopeFolderId ? [String(request.scopeFolderId)] : []);
-    const plan = await organizePlanByAiInference(scopeFolderIds);
+    const recursive = typeof request.recursive === 'boolean' ? request.recursive : true;
+    const plan = await organizePlanByAiInference(scopeFolderIds, { recursive });
     sendResponse({ success: true, data: plan });
   } catch (error) {
     console.error('AI 推理归类失败:', error);
@@ -1382,6 +1384,7 @@ async function autoClassifyBookmarks(options = {}) {
     }
 
     // 获取书签（支持限定范围，兼容多范围与单范围）
+    const recursive = typeof options.recursive === 'boolean' ? options.recursive : true;
     let bookmarksTrees = [];
     try {
       const ids = Array.isArray(options.scopeFolderIds)
@@ -1389,31 +1392,34 @@ async function autoClassifyBookmarks(options = {}) {
         : [];
       if (ids.length > 0) {
         for (const id of ids) {
-          const children = await chrome.bookmarks.getChildren(String(id));
-          // getChildren 返回子节点数组，用 { children } 包装后传给 flattenBookmarks
-          bookmarksTrees.push({ scopeId: String(id), tree: { children: Array.isArray(children) ? children : [] }, recursive: false });
-          console.log('[autoClassify] 获取指定范围子级成功:', id);
+          const tree = await chrome.bookmarks.getSubTree(String(id));
+          bookmarksTrees.push({ scopeId: String(id), tree });
+          console.log('[autoClassify] 获取指定范围子树成功:', id);
         }
       } else if (options.scopeFolderId) {
         const id = String(options.scopeFolderId);
         const tree = await chrome.bookmarks.getSubTree(id);
-        bookmarksTrees.push({ scopeId: id, tree, recursive: true });
+        bookmarksTrees.push({ scopeId: id, tree });
         console.log('[autoClassify] 获取指定范围子树成功(兼容单值):', id);
       } else {
         const tree = await chrome.bookmarks.getTree();
-        bookmarksTrees.push({ scopeId: '', tree, recursive: true });
-        console.log('[autoClassize] 获取书签树成功');
+        bookmarksTrees.push({ scopeId: '', tree });
+        console.log('[autoClassify] 获取书签树成功');
       }
     } catch (e) {
       console.error('[autoClassify] 获取书签树失败:', e);
       throw new Error('无法读取书签，请检查权限');
     }
     let flatBookmarks = [];
-    for (const { scopeId, tree, recursive } of bookmarksTrees) {
-      const flat = flattenBookmarks(tree, recursive);
+    for (const { scopeId, tree } of bookmarksTrees) {
+      let flat = flattenBookmarks(tree);
+      // 非递归模式：仅保留 scope 文件夹的直接子书签（不含子文件夹内书签）
+      if (!recursive && scopeId) {
+        flat = flat.filter(b => String(b.parentId) === scopeId);
+      }
       flat.forEach(b => flatBookmarks.push({ ...b, _originScopeId: scopeId }));
     }
-    console.log('[autoClassify] 扁平化书签数量:', flatBookmarks.length);
+    console.log('[autoClassify] 扁平化书签数量:', flatBookmarks.length, 'recursive:', recursive);
 
     // 构建预览分类结果
     const preview = {
@@ -1458,7 +1464,7 @@ async function autoClassifyBookmarks(options = {}) {
       categoriesPerScope[sid].add(category);
     }
     for (const [sid, set] of Object.entries(categoriesPerScope)) {
-      const parentId = sid ? String(sid) : '1';
+      const parentId = '1';
       if (!categoryFoldersByScope[sid]) categoryFoldersByScope[sid] = {};
       for (const category of set) {
         try {
@@ -1490,7 +1496,7 @@ async function autoClassifyBookmarks(options = {}) {
       let targetFolder = categoryFoldersByScope[sid][category];
       if (!targetFolder && category === otherName) {
         const otherNm = translateCategoryName('其他', clsLang);
-        const parentId = sid ? String(sid) : '1';
+        const parentId = '1';
         try {
           categoryFoldersByScope[sid][otherNm] = await findOrCreateFolder(otherNm, { parentId });
         } catch (err) {
@@ -2479,7 +2485,7 @@ async function organizeByPlan(plan) {
     categoriesPerScope[sid].add(category);
   }
   for (const [sid, set] of Object.entries(categoriesPerScope)) {
-    const parentId = sid ? String(sid) : '1';
+    const parentId = '1';
     if (!categoryFoldersByScope[sid]) categoryFoldersByScope[sid] = {};
     for (const category of set) {
       try {
@@ -2511,7 +2517,7 @@ async function organizeByPlan(plan) {
     if (!categoryFoldersByScope[sid]) categoryFoldersByScope[sid] = {};
     let targetFolder = categoryFoldersByScope[sid][category];
     if (!targetFolder && otherCandidates.includes(category)) {
-      const parentId = sid ? String(sid) : '1';
+      const parentId = '1';
       const otherName = otherCandidates.find(n => plan.categories[n]) || '其他';
       try {
         categoryFoldersByScope[sid][otherName] = await findOrCreateFolder(otherName, { parentId });
@@ -2591,9 +2597,10 @@ async function organizeByPlan(plan) {
 }
 
 // 生成 AI 推理的整理计划（返回与预览一致的结构）
-async function organizePlanByAiInference(scopeFolderIds = []) {
+async function organizePlanByAiInference(scopeFolderIds = [], opts = {}) {
   // 读取设置以获取 AI 参数和语言
   const settings = await chrome.storage.sync.get(['enableAI','aiProvider','aiApiKey','aiApiUrl','aiModel','maxTokens','classificationLanguage','aiBatchSize','aiConcurrency']);
+  const recursive = typeof opts.recursive === 'boolean' ? opts.recursive : true;
 
   // === AI推理调试日志开始 ===
   console.log('[AI Debug] === AI推理调试开始 ===');
@@ -2605,7 +2612,8 @@ async function organizePlanByAiInference(scopeFolderIds = []) {
     apiKey: settings.aiApiKey ? `sk-****${settings.aiApiKey.slice(-6)}` : '未设置',
     maxTokens: settings.maxTokens,
     classificationLanguage: settings.classificationLanguage,
-    scopeFolderIds: scopeFolderIds
+    scopeFolderIds: scopeFolderIds,
+    recursive
   });
   if (!settings.enableAI) {
     console.error('[AI Debug] AI 未启用');
@@ -2634,7 +2642,11 @@ async function organizePlanByAiInference(scopeFolderIds = []) {
   }
   const flatRaw = [];
   for (const { scopeId, tree } of bookmarksTrees) {
-    const flat = flattenBookmarks(tree).filter(b => b.url);
+    let flat = flattenBookmarks(tree).filter(b => b.url);
+    // 非递归模式：仅保留 scope 文件夹的直接子书签
+    if (!recursive && scopeId) {
+      flat = flat.filter(b => String(b.parentId) === scopeId);
+    }
     flat.forEach(b => flatRaw.push({ ...b, _originScopeId: scopeId }));
   }
 

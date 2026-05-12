@@ -1395,11 +1395,12 @@ class OptionsManager {
       // 先弹出参数确认弹窗，仅选择整理范围
       const params = await this.showOrganizeParamsDialog();
       if (!params) return; // 用户取消
-      const { scopeFolderIds = [] } = params;
+      const { scopeFolderIds = [], recursive = true } = params;
       if (typeof chrome !== 'undefined' && chrome?.runtime) {
         previewResponse = await chrome.runtime.sendMessage({
           action: 'previewOrganize',
-          scopeFolderIds
+          scopeFolderIds,
+          recursive
         });
       } else {
         throw new Error('当前不在扩展环境，无法执行');
@@ -1410,7 +1411,8 @@ class OptionsManager {
       // 将预览内嵌到”整理”标签，不再使用弹窗
       // 记录当前选择至计划元信息，便于确认时传递
       const meta = {
-        scopeFolderIds: scopeFolderIds
+        scopeFolderIds: scopeFolderIds,
+        recursive
       };
       const planWithMeta = { ...plan, meta };
       this.organizePreviewPlan = planWithMeta;
@@ -1450,15 +1452,15 @@ class OptionsManager {
       // 先弹出参数确认弹窗，仅选择整理范围
       const params = await this.showOrganizeParamsDialog();
       if (!params) return; // 用户取消
-      const { scopeFolderIds = [] } = params;
+      const { scopeFolderIds = [], recursive = true } = params;
       if (typeof chrome === 'undefined' || !chrome?.runtime) {
         throw new Error('当前不在扩展环境，无法执行');
       }
-      const resp = await chrome.runtime.sendMessage({ action: 'organizeByAiInference', scopeFolderIds });
+      const resp = await chrome.runtime.sendMessage({ action: 'organizeByAiInference', scopeFolderIds, recursive });
       if (!resp?.success) throw new Error(resp?.error || 'AI 归类预览失败');
       // 记录当前选择至计划元信息，便于确认时传递
-      const plan = { ...resp.data, meta: { ...(resp.data?.meta || {}), scopeFolderIds } };
-      this._lastOrganizeParams = { scopeFolderIds };
+      const plan = { ...resp.data, meta: { ...(resp.data?.meta || {}), scopeFolderIds, recursive } };
+      this._lastOrganizeParams = { scopeFolderIds, recursive };
       // 渲染到“整理”标签的内嵌预览，支持用户调整与确认
       this.organizePreviewPlan = plan;
       this.renderOrganizePreview(plan);
@@ -1490,7 +1492,9 @@ class OptionsManager {
       const expandText = window.I18n ? (window.I18n.t('preview.expand') || '展开全部') : '展开全部';
       const collapseText = window.I18n ? (window.I18n.t('preview.collapse') || '收起') : '收起';
       const clickHint = window.I18n ? (window.I18n.t('preview.clickHint') || '点击书签切换分类') : '点击书签切换分类';
-      let categoryNames = Object.keys(preview.categories || {});
+      const knownCategories = new Set(Object.keys(preview.categories || {}));
+      (this.classificationRules || []).forEach(r => { if (r.category) knownCategories.add(r.category); });
+      let categoryNames = [...knownCategories].sort();
 
       const sortCategories = (entries) => entries.sort(([a], [b]) => {
         const isOther = (s) => s === '其他' || s === 'Others';
@@ -1730,7 +1734,9 @@ class OptionsManager {
       if (!isOther(a) && isOther(b)) return -1;
       return a.localeCompare(b, 'zh-CN');
     });
-    const categoryNames = Object.keys(preview.categories || {});
+    const knownCategories = new Set(Object.keys(preview.categories || {}));
+    (this.classificationRules || []).forEach(r => { if (r.category) knownCategories.add(r.category); });
+    const categoryNames = [...knownCategories].sort();
     const categoriesHtml = sortCategories(Object.entries(preview.categories || {})
       .filter(([, data]) => data && data.count > 0))
       .map(([name, data]) => {
@@ -1799,11 +1805,15 @@ class OptionsManager {
                 await new Promise(resolve => setTimeout(resolve, 800));
               }
               setStatus('执行整理中...', 'success');
-              // 确认时携带元信息（仅整理范围）
+              // 确认时携带元信息（整理范围 + 递归标志）
               const last = this._lastOrganizeParams || {};
               const planToRun = {
                 ...preview,
-                meta: { ...(preview.meta || {}), scopeFolderIds: Array.isArray(last.scopeFolderIds) ? last.scopeFolderIds : [] }
+                meta: {
+                  ...(preview.meta || {}),
+                  scopeFolderIds: Array.isArray(last.scopeFolderIds) ? last.scopeFolderIds : [],
+                  recursive: typeof last.recursive === 'boolean' ? last.recursive : (typeof preview.meta?.recursive === 'boolean' ? preview.meta.recursive : true)
+                }
               };
               const runResponse = await chrome.runtime.sendMessage({ action: 'organizeByPlan', plan: planToRun });
               if (!runResponse?.success) throw new Error(runResponse?.error || '整理失败');
@@ -1930,27 +1940,28 @@ class OptionsManager {
           ensureCategorySection(newCat);
           debug('new category created in data:', newCat);
         }
-        let bookmark = null;
-        let originCat = oldCat;
-        const detail = (preview.details || []).find(d => String(d.bookmark?.id) === String(id));
-        debug('detail found:', !!detail, 'detail.category:', detail?.category);
-        if (detail && detail.bookmark) {
-          bookmark = detail.bookmark;
-          originCat = detail.category || oldCat;
-          detail.category = newCat;
-        } else {
-          const found = findBookmarkInPreview(id);
-          debug('findBookmarkInPreview result:', found ? { cat: found.cat } : null);
-          if (!found) { cleanup(); return; }
-          bookmark = found.bookmark;
-          originCat = found.cat || oldCat;
+        // 始终从 categories 查找（与 DOM 渲染同一数据源，避免 ID 跨序列化不一致）
+        const found = findBookmarkInPreview(id);
+        debug('findBookmarkInPreview result:', found ? { cat: found.cat } : null);
+        if (!found) { cleanup(); return; }
+        const bookmark = found.bookmark;
+        const originCat = found.cat || oldCat;
+        // 同步更新 details 中的 category（确认整理时依赖 details 数组）
+        // 用找到的 bookmark.id 回查 detail，保证 ID 来源一致
+        const bmId = String(bookmark.id);
+        if (bmId) {
+          const detail = (preview.details || []).find(d => String(d.bookmark?.id) === bmId);
+          if (detail) {
+            debug('detail found, updating category:', detail.category, '->', newCat);
+            detail.category = newCat;
+          }
         }
         debug('originCat:', originCat, '-> newCat:', newCat);
-        // 更新旧分类
+        // 更新旧分类：从原分类中移除该书签
         const beforeOld = preview.categories[originCat]?.count || 0;
         const beforeNew = preview.categories[newCat]?.count || 0;
         if (preview.categories[originCat]) {
-          preview.categories[originCat].bookmarks = (preview.categories[originCat].bookmarks || []).filter(b => String(b.id) !== String(id));
+          preview.categories[originCat].bookmarks = (preview.categories[originCat].bookmarks || []).filter(b => b !== bookmark);
           preview.categories[originCat].count = Math.max(0, (preview.categories[originCat].count || 1) - 1);
         }
         // 更新新分类
@@ -2028,9 +2039,13 @@ class OptionsManager {
           <div style="margin:6px 0 10px;color:#6B7280;font-size:12px;">
             勾选需要整理的范围；不勾选表示整理全部书签。
           </div>
-          <div id="dlgScopes" style="width:100%;max-height:320px;overflow:auto;border:1px solid #E5E7EB;border-radius:8px;padding:8px;box-sizing:border-box;">
+          <div id="dlgScopes" style="width:100%;max-height:280px;overflow:auto;border:1px solid #E5E7EB;border-radius:8px;padding:8px;box-sizing:border-box;">
             ${buildOptions()}
           </div>
+        </div>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:6px;">
+          <input id="dlgRecursive" type="checkbox" checked style="margin:0;width:16px;height:16px;cursor:pointer;"/>
+          <label for="dlgRecursive" style="cursor:pointer;color:#374151;font-size:14px;user-select:none;">${window.I18n ? (window.I18n.t('organize.recursive.label') || '包含子文件夹') : '包含子文件夹'}</label>
         </div>
       </div>`;
 
@@ -2041,12 +2056,15 @@ class OptionsManager {
     if (!confirmed) return null;
     const dlgScopes = document.getElementById('dlgScopes');
     const scopeFolderIds = dlgScopes ? Array.from(dlgScopes.querySelectorAll('input[type="checkbox"]:checked')).map(i => String(i.value)).filter(Boolean) : [];
+    const dlgRecursive = document.getElementById('dlgRecursive');
+    const recursive = dlgRecursive ? dlgRecursive.checked : true;
     // 同步设置以便下次默认（保持旧字段兼容）
     this.settings.organizeScopeFolderIds = scopeFolderIds;
     this.settings.organizeScopeFolderId = scopeFolderIds[0] || '';
+    this.settings.organizeRecursive = recursive;
     try { await this.saveSettings(); } catch (e) {}
-    this._lastOrganizeParams = { scopeFolderIds };
-    return { scopeFolderIds };
+    this._lastOrganizeParams = { scopeFolderIds, recursive };
+    return { scopeFolderIds, recursive };
   }
 
   // 备份书签（生成 Chrome 兼容书签 HTML 并触发下载）
@@ -2589,12 +2607,16 @@ class OptionsManager {
     } else {
       // 兜底：仍使用简体中文默认集
       rules = [
+        { category: 'Playcrab', keywords: ['playcrab', 'tower'] },
+        { category: 'Topjoy', keywords: ['topjoy', 'gouki', 'pandora', 'vega', 'fairy', '语雀'] },
+        { category: 'Development/Unity', keywords: ['unity', 'unity3d'] },
+        { category: 'Development/Cocos', keywords: ['cocos', 'cocos2d', 'cocos creator'] },
         { category: '开源与代码托管', keywords: ['github', 'gitlab', 'gitee', 'bitbucket', 'source code', 'repository', 'repo'] },
         { category: '开发文档与API', keywords: ['docs', 'documentation', 'api', 'sdk', 'developer', 'developers', 'reference', '文档', '接口'] },
-        { category: '前端框架', keywords: ['react', 'vue', 'angular', 'svelte', 'nextjs', 'nuxt', 'vite', 'webpack', 'babel', 'preact', 'solidjs', 'ember'] },
-        { category: '后端框架', keywords: ['spring', 'springboot', 'django', 'flask', 'fastapi', 'express', 'koa', 'rails', 'laravel', 'nestjs', 'micronaut', 'quarkus', 'fastify', 'hapi', 'gin', 'asp.net', 'dotnet', 'phoenix'] },
-        { category: '云服务与DevOps', keywords: ['aws', 'azure', 'gcp', 'cloud', 'kubernetes', 'k8s', 'docker', 'ci', 'cd', 'devops', 'terraform', 'cloudflare', 'vercel', 'netlify', 'digitalocean', 'heroku', 'render', 'linode', 'railway'] },
-        { category: '数据库与数据', keywords: ['mysql', 'postgres', 'mongodb', 'redis', 'sqlite', 'elasticsearch', 'clickhouse', 'snowflake', 'data', '数据库', 'mariadb', 'oracle', 'sql server', 'mssql', 'dynamodb', 'bigquery', 'firestore', 'cassandra'] }
+        { category: '前端框架', keywords: ['react', 'vue', 'angular', 'svelte', 'nextjs', 'nuxt', 'vite', 'webpack', 'babel', 'typescript', 'javascript', 'css', 'html', 'tailwind', 'node.js', 'npm', 'electron', 'bootstrap', 'sass', 'scss', 'pwa'] },
+        { category: '后端框架', keywords: ['spring', 'springboot', 'django', 'flask', 'fastapi', 'express', 'nestjs', 'golang', 'rust', 'python', 'java', 'gin', 'laravel', 'rails', 'dotnet', 'csharp', 'kotlin'] },
+        { category: '云服务与DevOps', keywords: ['aws', 'azure', 'gcp', 'cloud', 'kubernetes', 'k8s', 'docker', 'ci/cd', 'devops', 'terraform', 'cloudflare', 'vercel', 'netlify', 'grafana', 'nginx', 'linux', 'server', 'digitalocean', 'github actions', 'prometheus', 'deployment', 'monitoring'] },
+        { category: '数据库与数据', keywords: ['mysql', 'postgres', 'mongodb', 'redis', 'sqlite', 'elasticsearch', 'database', 'sql', 'nosql', 'prisma'] }
       ];
     }
     const enMap = (window.I18n && window.I18n.ADDITIONAL_CATEGORY_PAIRS) || {};
