@@ -1681,25 +1681,21 @@ async function findOrCreateFolder(name) {
 }
 
 // 扁平化书签树
-// recursive: true 递归遍历所有子文件夹，false 只处理直接子节点（不进入子文件夹）
-function flattenBookmarks(bookmarkTree, recursive = true) {
+function flattenBookmarks(bookmarkTree) {
   const result = [];
 
   function traverse(nodes) {
-    if (!nodes || typeof nodes[Symbol.iterator] !== 'function') return;
     for (const node of nodes) {
       if (node.url) {
         result.push(node);
       }
-      if (recursive && node.children) {
+      if (node.children) {
         traverse(node.children);
       }
     }
   }
 
-  // normalize: bookmarkTree 可能是数组(getTree/getSubTree)也可能是 { children } 对象(getChildren 包装)
-  const rootNodes = Array.isArray(bookmarkTree) ? bookmarkTree : (bookmarkTree.children || []);
-  traverse(rootNodes);
+  traverse(bookmarkTree);
   return result;
 }
 
@@ -2893,21 +2889,19 @@ async function showAddNotification({ title, url, category }) {
 chrome.contextMenus?.onClicked.addListener(async (info, tab) => {
   try {
     // classificationRules stored in local (too large for sync 8KB per-item limit)
-    let _classificationRules, _classificationLanguage;
+    let classificationRules, classificationLanguage;
     try {
       const localRules = await chrome.storage.local.get(['classificationRules']);
       if (Array.isArray(localRules.classificationRules)) {
-        _classificationRules = localRules.classificationRules;
+        classificationRules = localRules.classificationRules;
         const syncLang = await chrome.storage.sync.get(['classificationLanguage']);
-        _classificationLanguage = syncLang.classificationLanguage;
+        classificationLanguage = syncLang.classificationLanguage;
       } else {
         const sync = await chrome.storage.sync.get(['classificationRules', 'classificationLanguage']);
-        _classificationRules = sync.classificationRules;
-        _classificationLanguage = sync.classificationLanguage;
+        classificationRules = sync.classificationRules;
+        classificationLanguage = sync.classificationLanguage;
       }
     } catch (_) {}
-    const classificationRules = _classificationRules;
-    const classificationLanguage = _classificationLanguage;
     const lang = resolveClassificationLanguage(classificationLanguage);
     const rules = classificationRules || getDefaultClassificationRules(lang);
 

@@ -21,6 +21,17 @@
     // ── Development ──
     { category: 'Development/Unity', keywords: ['unity', 'unity3d'] },
     { category: 'Development/Cocos', keywords: ['cocos', 'cocos2d', 'cocos creator'] },
+    { category: 'Development/Lua', keywords: [
+      'lua', 'luajit', 'luarocks', 'love2d',
+      'luau', 'openresty',
+      'lua script', 'lua语言', 'lua脚本'
+    ] },
+    { category: 'Development/Python', keywords: [
+      'python', 'pypi', 'pip', 'anaconda', 'conda',
+      'pycharm', 'virtualenv', 'venv', 'poetry',
+      'pydantic', 'python3', 'pytest',
+      'python教程', 'python文档'
+    ] },
 
     { category: 'Development/Code Hosting', keywords: [
       'github', 'gitlab', 'gitee', 'bitbucket', 'repository', 'repo',
@@ -43,7 +54,7 @@
     ] },
     { category: 'Development/Backend', keywords: [
       'spring', 'springboot', 'django', 'flask', 'fastapi', 'express',
-      'nestjs', 'golang', 'rust', 'python', 'java', 'backend', 'gin',
+      'nestjs', 'golang', 'rust', 'java', 'backend', 'gin',
       'laravel', 'rails', 'dotnet', 'csharp', 'kotlin',
       'microservice',
       '后端', '服务端', '微服务'
@@ -55,10 +66,35 @@
       'jenkins', 'github actions', 'prometheus', 'deployment', 'monitoring',
       '云服务', '运维', '部署', '服务器', '监控', '容器'
     ] },
+    { category: 'Development/Dev Environment', keywords: [
+      'homebrew', 'scoop', 'chocolatey', 'winget',
+      'wsl', 'wsl2',
+      'nvm', 'pyenv', 'rbenv', 'asdf',
+      'dotfiles', 'zsh', 'oh-my-zsh',
+      'vscode', 'neovim', 'jetbrains',
+      'iterm2', 'windows terminal',
+      'environment setup', 'dev setup',
+      '开发环境', '环境搭建', '开发工具链'
+    ] },
     { category: 'Development/Databases', keywords: [
       'mysql', 'postgres', 'mongodb', 'redis', 'sqlite', 'elasticsearch',
       'database', 'sql', 'nosql', 'prisma',
       '数据库', '数据存储', '缓存'
+    ] },
+    { category: 'Development/OS', keywords: [
+      'windows', 'win32', 'winapi', 'powershell',
+      'macos', 'osx', 'cocoa',
+      'windows开发', 'mac开发'
+    ] },
+    { category: 'Development/Mobile', keywords: [
+      'ios', 'android', 'swift', 'swiftui',
+      'flutter', 'react native',
+      '移动开发', '安卓开发', 'ios开发'
+    ] },
+    { category: 'Development/Game', keywords: [
+      'gamedev', 'game engine', 'game programming',
+      'directx', 'opengl', 'vulkan',
+      '游戏编程', '游戏引擎'
     ] },
 
     // ── Games ──

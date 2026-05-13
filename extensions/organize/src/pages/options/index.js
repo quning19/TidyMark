@@ -75,7 +75,6 @@ class OptionsManager {
           'deadIgnoreDnsOk',
           'deadScanDuplicates',
           'deadScanFolderId',
-          'deadSkipDomains',
           // 整理范围（移除目标父目录）
           'organizeScopeFolderId',
           // 多选整理范围（新增）
@@ -255,9 +254,6 @@ class OptionsManager {
         deadEnableDnsCheck: result.deadEnableDnsCheck !== undefined ? !!result.deadEnableDnsCheck : false,
         deadIgnoreDnsOk: result.deadIgnoreDnsOk !== undefined ? !!result.deadIgnoreDnsOk : false,
         deadScanDuplicates: result.deadScanDuplicates !== undefined ? !!result.deadScanDuplicates : false,
-        deadSkipDomains: Array.isArray(result.deadSkipDomains) && result.deadSkipDomains.length > 0
-          ? result.deadSkipDomains.map(v => String(v).trim()).filter(Boolean)
-          : ['home.quning.fun', 'youle.game', 'topjoy.com'],
         // 多选整理范围（为空表示全部）
         organizeScopeFolderIds: Array.isArray(result.organizeScopeFolderIds)
           ? result.organizeScopeFolderIds.map(v => String(v))
@@ -326,7 +322,6 @@ class OptionsManager {
         deadIgnoreDnsOk: false,
         deadScanDuplicates: false,
         deadScanFolderId: null,
-        deadSkipDomains: ['home.quning.fun', 'youle.game', 'topjoy.com'],
         // 默认云端设置
         webdavUrl: '',
         webdavUsername: '',
@@ -1506,14 +1501,8 @@ class OptionsManager {
       (this.classificationRules || []).forEach(r => { if (r.category) knownCategories.add(r.category); });
       let categoryNames = [...knownCategories].sort();
 
-      const sortCategories = (entries) => entries.sort(([a], [b]) => {
-        const isOther = (s) => s === '其他' || s === 'Others';
-        if (isOther(a) && !isOther(b)) return 1;
-        if (!isOther(a) && isOther(b)) return -1;
-        return a.localeCompare(b, 'zh-CN');
-      });
-      const categoriesHtml = sortCategories(Object.entries(preview.categories || {})
-        .filter(([, data]) => data && data.count > 0))
+      const categoriesHtml = Object.entries(preview.categories || {})
+        .filter(([, data]) => data && data.count > 0)
         .map(([name, data]) => {
           const threshold = 10;
           const collapsedClass = (data.bookmarks || []).length > threshold ? 'collapsed' : '';
@@ -1738,17 +1727,11 @@ class OptionsManager {
     const confirmText = window.I18n ? (window.I18n.t('preview.confirm') || '确认整理') : '确认整理';
     const cancelText = window.I18n ? (window.I18n.t('preview.cancel') || '取消') : '取消';
 
-    const sortCategories = (entries) => entries.sort(([a], [b]) => {
-      const isOther = (s) => s === '其他' || s === 'Others';
-      if (isOther(a) && !isOther(b)) return 1;
-      if (!isOther(a) && isOther(b)) return -1;
-      return a.localeCompare(b, 'zh-CN');
-    });
     const knownCategories = new Set(Object.keys(preview.categories || {}));
     (this.classificationRules || []).forEach(r => { if (r.category) knownCategories.add(r.category); });
     const categoryNames = [...knownCategories].sort();
-    const categoriesHtml = sortCategories(Object.entries(preview.categories || {})
-      .filter(([, data]) => data && data.count > 0))
+    const categoriesHtml = Object.entries(preview.categories || {})
+      .filter(([, data]) => data && data.count > 0)
       .map(([name, data]) => {
         const displayName = (window.I18n && window.I18n.translateCategoryByName)
           ? window.I18n.translateCategoryByName(name)
@@ -1789,7 +1772,7 @@ class OptionsManager {
         if (a) {
           e.preventDefault();
           const li = a.closest('.list-item');
-          if (li) openPicker(li);
+          if (li) this._currentOpenPicker(li);
           return;
         }
         // Inline 取消
@@ -1817,12 +1800,13 @@ class OptionsManager {
               setStatus('执行整理中...', 'success');
               // 确认时携带元信息（整理范围 + 递归标志）
               const last = this._lastOrganizeParams || {};
+              const currentPlan = this.organizePreviewPlan;
               const planToRun = {
-                ...preview,
+                ...currentPlan,
                 meta: {
-                  ...(preview.meta || {}),
+                  ...(currentPlan?.meta || {}),
                   scopeFolderIds: Array.isArray(last.scopeFolderIds) ? last.scopeFolderIds : [],
-                  recursive: typeof last.recursive === 'boolean' ? last.recursive : (typeof preview.meta?.recursive === 'boolean' ? preview.meta.recursive : true)
+                  recursive: typeof last.recursive === 'boolean' ? last.recursive : (typeof currentPlan?.meta?.recursive === 'boolean' ? currentPlan.meta.recursive : true)
                 }
               };
               const runResponse = await chrome.runtime.sendMessage({ action: 'organizeByPlan', plan: planToRun });
@@ -2015,6 +1999,7 @@ class OptionsManager {
         cleanup();
       });
     };
+    this._currentOpenPicker = openPicker;
     // 其余逻辑由事件委托处理
   }
 
@@ -2305,7 +2290,7 @@ class OptionsManager {
     // 视口边缘自动滚动
     this._dragAutoScroll = (ev) => {
       const margin = 48;
-      const speed = 24;
+      const speed = 12;
       const y = ev.clientY;
       const vh = window.innerHeight;
       if (y < margin) window.scrollBy({ top: -speed, behavior: 'auto' });
@@ -2350,7 +2335,6 @@ class OptionsManager {
     }
     this._dragSourceIndex = null;
   }
-
 
 
   // 更新默认分类预览
@@ -2688,14 +2672,11 @@ class OptionsManager {
       const bookmarks = this.settings.deadScanFolderId
         ? await this.getBookmarksInFolder(this.settings.deadScanFolderId)
         : await this.getAllBookmarks();
-      console.log(`[deadScan] 书签总数: ${bookmarks.length}, 跳过域名清单:`, this.settings.deadSkipDomains);
       const targets = bookmarks.filter(b => {
         if (!this.isHttpUrl(b.url)) return false;
         if (this.settings.deadIgnorePrivateIp && this._isPrivateOrLocalHost(b.url)) return false;
-        if (this._isDomainSkipped(b.url)) return false;
         return true;
       });
-      console.log(`[deadScan] 过滤后待检测: ${targets.length}`);
       const total = targets.length;
       let done = 0;
       const dead = [];
@@ -2749,13 +2730,13 @@ class OptionsManager {
                     entry.status = `${entry.status} ${summary ? `| ${summary}` : ''}`;
                   }
                 } catch (e) {
-                  entry.status = `${entry.status} | DNS 检测错误: ${this._parseFetchError(e)}`;
+                  entry.status = `${entry.status} | DNS 检测错误`;
                 }
               }
               dead.push(entry);
             }
           } catch (e) {
-            const entry = { id: b.id, title: b.title, url: b.url, status: this._parseFetchError(e) };
+            const entry = { id: b.id, title: b.title, url: b.url, status: '网络错误' };
             if (this.settings.deadEnableDnsCheck) {
               try {
                 const domain = this._extractDomain(b.url);
@@ -2790,21 +2771,6 @@ class OptionsManager {
       const filtered = (this.settings.deadEnableDnsCheck && this.settings.deadIgnoreDnsOk)
         ? dead.filter(d => !(d.dns && d.dns.status === 'ok'))
         : dead;
-      // 按错误类型 + 域名排序（域名从右往左排，TLD 优先）
-      filtered.sort((a, b) => {
-        if (a.status !== b.status) return a.status.localeCompare(b.status);
-        const getDomainParts = (url) => {
-          try { return new URL(url).hostname.split('.').reverse(); } catch { return []; }
-        };
-        const partsA = getDomainParts(a.url);
-        const partsB = getDomainParts(b.url);
-        const len = Math.min(partsA.length, partsB.length);
-        for (let i = 0; i < len; i++) {
-          const cmp = partsA[i].localeCompare(partsB[i]);
-          if (cmp !== 0) return cmp;
-        }
-        return partsA.length - partsB.length;
-      });
 
       if (filtered.length === 0) {
         containerEl.hidden = false;
@@ -3237,13 +3203,13 @@ class OptionsManager {
         this._urlCheckCache.set(url, result);
         return result;
       }
-      // 认证类状态码视为”可达但受限”
+      // 认证类状态码视为“可达但受限”
       if (res.status === 401 || res.status === 403) {
         const result = { ok: true, status: res.status, statusText: String(res.status) };
         this._urlCheckCache.set(url, result);
         return result;
       }
-      // 常见瞬时错误统一视为可达以降低误报
+      // 常见瞬时错误统一视为可达以降低误报（与 LazyCat 的“尽量避免误判”思路一致）
       const transientStatuses = new Set([408, 425, 429, 502, 503, 504, 520, 522, 524]);
       if (transientStatuses.has(res.status)) {
         const result = { ok: true, status: res.status, statusText: String(res.status) };
@@ -3254,6 +3220,7 @@ class OptionsManager {
       if (res.status === 405 || res.status === 501) {
         try {
           const resNc = await fetch(url, { method: 'GET', mode: 'no-cors', redirect: 'follow', credentials: 'omit', cache: 'no-store' });
+          // 成功返回即视为可达；opaque 无法读状态但说明网络连通
           const result = { ok: true, status: 0, statusText: 'opaque' };
           this._urlCheckCache.set(url, result);
           return result;
@@ -3283,20 +3250,19 @@ class OptionsManager {
       if (avoidPopups) {
         try {
           const res2 = await fetch(url, { method: 'HEAD', mode: 'no-cors', redirect: 'manual', credentials: 'omit', cache: 'no-store' });
+          // 成功返回即视为可达（opaque 无法读状态，但不触发弹窗）
           const result = { ok: true, status: 0, statusText: 'opaque' };
           this._urlCheckCache.set(url, result);
           return result;
         } catch (e2) {
-          let lastErr = e2;
+          // 尝试 GET no-cors 作为进一步连通性确认
           try {
             await fetch(url, { method: 'GET', mode: 'no-cors', redirect: 'follow', credentials: 'omit', cache: 'no-store' });
             const result = { ok: true, status: 0, statusText: 'opaque' };
             this._urlCheckCache.set(url, result);
             return result;
-          } catch (e3) {
-            lastErr = e3;
-          }
-          const result = { ok: false, status: 0, statusText: this._parseFetchError(lastErr) };
+          } catch (e3) {}
+          const result = { ok: false, status: 0, statusText: '网络错误或超时' };
           this._urlCheckCache.set(url, result);
           return result;
         }
@@ -3307,21 +3273,11 @@ class OptionsManager {
         this._urlCheckCache.set(url, result);
         return result;
       } catch (e3) {
-        const result = { ok: false, status: 0, statusText: this._parseFetchError(e3) };
+        const result = { ok: false, status: 0, statusText: '网络错误或超时' };
         this._urlCheckCache.set(url, result);
         return result;
       }
     }
-  }
-
-  // 解析 fetch 错误，返回更具体的错误描述
-  _parseFetchError(e) {
-    if (!e) return '未知错误';
-    const msg = e.message ? e.message.toLowerCase() : '';
-    if (msg.includes('aborted')) return '请求超时';
-    if (msg.includes('cors') || msg.includes('access-control')) return 'CORS 错误';
-    if (msg.includes('failed to fetch') || msg.includes('fetch failed')) return '连接失败';
-    return '网络错误或超时';
   }
 
   async checkUrlAliveGet(url, { timeoutMs = 5000 } = {}) {
@@ -3330,7 +3286,7 @@ class OptionsManager {
     try {
       const res = await fetch(url, { method: 'GET', mode: 'cors', redirect: 'follow', credentials: 'omit', cache: 'no-store', signal: controller.signal });
       clearTimeout(timer);
-      // 认证类状态码视为”可达但受限”
+      // 认证类状态码视为“可达但受限”
       if (res.ok || res.status === 401 || res.status === 403) {
         return { ok: true, status: res.status, statusText: String(res.status) };
       }
@@ -3359,24 +3315,6 @@ class OptionsManager {
       }
       this._hostLastTime[host] = Date.now();
     } catch {}
-  }
-
-  // 检查 URL 域名是否在跳过清单中（支持子域名匹配）
-  _isDomainSkipped(url) {
-    const skipDomains = this.settings.deadSkipDomains || [];
-    if (skipDomains.length === 0) return false;
-    try {
-      const hostname = new URL(url).hostname;
-      const matched = skipDomains.find(domain =>
-        hostname === domain || hostname.endsWith('.' + domain)
-      );
-      if (matched) {
-        console.log(`[deadScan] 跳过: ${url} (匹配 ${matched})`);
-      }
-      return !!matched;
-    } catch {
-      return false;
-    }
   }
 
   escapeHtml(text) {

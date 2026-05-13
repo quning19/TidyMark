@@ -1772,7 +1772,7 @@ class OptionsManager {
         if (a) {
           e.preventDefault();
           const li = a.closest('.list-item');
-          if (li) openPicker(li);
+          if (li) this._currentOpenPicker(li);
           return;
         }
         // Inline 取消
@@ -1800,12 +1800,13 @@ class OptionsManager {
               setStatus('执行整理中...', 'success');
               // 确认时携带元信息（整理范围 + 递归标志）
               const last = this._lastOrganizeParams || {};
+              const currentPlan = this.organizePreviewPlan;
               const planToRun = {
-                ...preview,
+                ...currentPlan,
                 meta: {
-                  ...(preview.meta || {}),
+                  ...(currentPlan?.meta || {}),
                   scopeFolderIds: Array.isArray(last.scopeFolderIds) ? last.scopeFolderIds : [],
-                  recursive: typeof last.recursive === 'boolean' ? last.recursive : (typeof preview.meta?.recursive === 'boolean' ? preview.meta.recursive : true)
+                  recursive: typeof last.recursive === 'boolean' ? last.recursive : (typeof currentPlan?.meta?.recursive === 'boolean' ? currentPlan.meta.recursive : true)
                 }
               };
               const runResponse = await chrome.runtime.sendMessage({ action: 'organizeByPlan', plan: planToRun });
@@ -1998,6 +1999,7 @@ class OptionsManager {
         cleanup();
       });
     };
+    this._currentOpenPicker = openPicker;
     // 其余逻辑由事件委托处理
   }
 
