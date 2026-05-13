@@ -1390,7 +1390,7 @@ class OptionsManager {
       // 先弹出参数确认弹窗，仅选择整理范围
       const params = await this.showOrganizeParamsDialog();
       if (!params) return; // 用户取消
-      const { scopeFolderIds = [], recursive = true } = params;
+      const { scopeFolderIds = [], recursive = true, enableAI = false } = params;
       if (typeof chrome !== 'undefined' && chrome?.runtime) {
         previewResponse = await chrome.runtime.sendMessage({
           action: 'previewOrganize',
@@ -1402,6 +1402,16 @@ class OptionsManager {
       }
       if (!previewResponse?.success) throw new Error(previewResponse?.error || '生成预览失败');
       let plan = previewResponse.data;
+
+      // 若用户在弹窗中启用了 AI 且已配置 API Key，调用后台 AI 优化
+      const useAI = enableAI && !!this.settings.aiApiKey;
+      if (useAI && typeof chrome !== 'undefined' && chrome?.runtime) {
+        setStatus('AI 优化中...', 'success');
+        const aiResp = await chrome.runtime.sendMessage({ action: 'refineOrganizeWithAI', preview: plan });
+        if (aiResp?.success && aiResp.data) {
+          plan = aiResp.data;
+        }
+      }
 
       // 将预览内嵌到”整理”标签，不再使用弹窗
       // 记录当前选择至计划元信息，便于确认时传递
@@ -2015,8 +2025,21 @@ class OptionsManager {
       return items.join('');
     };
 
+    const aiEnabled = !!(this.settings.enableAI && this.settings.aiApiKey);
     const messageHtml = `
       <div style="width:100%;">
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input id="dlgEnableAI" type="checkbox" ${aiEnabled ? 'checked' : ''} style="margin:0;width:16px;height:16px;cursor:pointer;"/>
+            <label for="dlgEnableAI" style="cursor:pointer;color:#374151;font-size:14px;user-select:none;">启用 AI 优化</label>
+            <span style="color:#9CA3AF;font-size:11px;">${aiEnabled ? '' : '（未配置 API Key 则自动跳过）'}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input id="dlgRecursive" type="checkbox" checked style="margin:0;width:16px;height:16px;cursor:pointer;"/>
+            <label for="dlgRecursive" style="cursor:pointer;color:#374151;font-size:14px;user-select:none;">递归子目录</label>
+          </div>
+        </div>
+        <hr style="border:none;border-top:1px solid #E5E7EB;margin:8px 0 12px;"/>
         <div style="display:block;margin-bottom:8px;">
           <span style="font-weight:600;color:#111827;">${this.escapeHtml(scopeLabel)}（可多选，留空表示全部）</span>
           <div style="margin:6px 0 10px;color:#6B7280;font-size:12px;">
@@ -2025,10 +2048,6 @@ class OptionsManager {
           <div id="dlgScopes" style="width:100%;max-height:280px;overflow:auto;border:1px solid #E5E7EB;border-radius:8px;padding:8px;box-sizing:border-box;">
             ${buildOptions()}
           </div>
-        </div>
-        <div style="margin-top:10px;display:flex;align-items:center;gap:6px;">
-          <input id="dlgRecursive" type="checkbox" checked style="margin:0;width:16px;height:16px;cursor:pointer;"/>
-          <label for="dlgRecursive" style="cursor:pointer;color:#374151;font-size:14px;user-select:none;">${window.I18n ? (window.I18n.t('organize.recursive.label') || '包含子文件夹') : '包含子文件夹'}</label>
         </div>
       </div>`;
 
@@ -2041,13 +2060,15 @@ class OptionsManager {
     const scopeFolderIds = dlgScopes ? Array.from(dlgScopes.querySelectorAll('input[type="checkbox"]:checked')).map(i => String(i.value)).filter(Boolean) : [];
     const dlgRecursive = document.getElementById('dlgRecursive');
     const recursive = dlgRecursive ? dlgRecursive.checked : true;
+    const dlgEnableAI = document.getElementById('dlgEnableAI');
+    const enableAI = dlgEnableAI ? dlgEnableAI.checked : false;
     // 同步设置以便下次默认（保持旧字段兼容）
     this.settings.organizeScopeFolderIds = scopeFolderIds;
     this.settings.organizeScopeFolderId = scopeFolderIds[0] || '';
     this.settings.organizeRecursive = recursive;
     try { await this.saveSettings(); } catch (e) {}
-    this._lastOrganizeParams = { scopeFolderIds, recursive };
-    return { scopeFolderIds, recursive };
+    this._lastOrganizeParams = { scopeFolderIds, recursive, enableAI };
+    return { scopeFolderIds, recursive, enableAI };
   }
 
   // 备份书签（生成 Chrome 兼容书签 HTML 并触发下载）

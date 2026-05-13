@@ -66,9 +66,19 @@
       'godot', 'unreal engine', 'unreal', 'gamemaker', 'rpg maker',
       'game development', 'game design', '游戏开发', '游戏引擎'
     ] },
-    { category: 'Games/Diablo', keywords: [
-      'diablo', 'd2r', 'd3', 'd4', 'maxroll', 'd2core', 'helltides',
-      'diablo2', 'arreat summit', 'runeword', 'rune word',
+    { category: 'Games/Diablo II', keywords: [
+      'd2r', 'd2core', 'diablo2', 'diablo ii', 'diablo 2',
+      'arreat summit', 'runeword', 'rune word',
+      '暗黑破坏神2', '暗黑2', '暗黑破坏神 2', '暗黑 2'
+    ] },
+    { category: 'Games/Diablo III', keywords: [
+      'd3', 'diablo iii', 'diablo 3', 'diablo3',
+      '暗黑破坏神3', '暗黑3', '暗黑破坏神 3', '暗黑 3'
+    ] },
+    { category: 'Games/Diablo IV', keywords: [
+      'd4', 'diablo iv', 'diablo 4', 'diablo4', 'helltides',
+      'maxroll', 'diablo',
+      '暗黑破坏神4', '暗黑4', '暗黑破坏神 4', '暗黑 4',
       '暗黑破坏神', '暗黑', '凯恩之角', '赫拉迪姆'
     ] },
     { category: 'Games/Dyson Sphere', keywords: [
